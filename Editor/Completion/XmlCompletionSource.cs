@@ -120,12 +120,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return null;
 		}
 
-		public virtual Task<object> GetDescriptionAsync (
+		public async virtual Task<object> GetDescriptionAsync (
 			IAsyncCompletionSession session,
 			CompletionItem item,
 			CancellationToken token)
 		{
-			return item.GetDocumentationAsync (session, token);
+			return await item.GetDocumentationAsync (session, token);
 		}
 
 		public virtual CompletionStartData InitializeCompletion (CompletionTrigger trigger, SnapshotPoint triggerLocation, CancellationToken token)
@@ -152,8 +152,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return CompletionStartData.DoesNotParticipateInCompletion;
 		}
 
-		private ImmutableArray<CompletionItem> sampleItems;
-
 		protected virtual Task<CompletionContext> GetElementCompletionsAsync (
 			IAsyncCompletionSession session,
 			SnapshotPoint triggerLocation,
@@ -161,8 +159,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 			bool includeBracket,
 			CancellationToken token
 			)
-			//=> Task.FromResult (CompletionContext.Empty);
-			=> Task.FromResult (new CompletionContext (sampleItems));
+			=> Task.FromResult (CompletionContext.Empty);
 
 		protected virtual Task<CompletionContext> GetAttributeCompletionsAsync (
 			IAsyncCompletionSession session,
