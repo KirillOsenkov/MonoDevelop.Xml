@@ -21,6 +21,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 		public static ImageElement ClosingTag = Element;
 
 		static readonly Guid KnownImagesGuid = KnownImageIds.ImageCatalogGuid;
-		static ImageElement CreateElement (int id) => new ImageElement (new ImageId (KnownImagesGuid, id));
+
+
+		static ImageElement CreateElement (int id) =>
+			new ImageElement (new ImageId (new Guid (KnownImageIds.ImageCatalogGuidString), 3335));
+			//new ImageElement( new ImageId (new Guid ("ae27a6b0-e345-4288-96df-5eaf394ee369"), 3573));
+			//new ImageElement (new ImageId (new System.Guid ("{ae27a6b0-e345-4288-96df-5eaf394ee369}"), 324));
+
 	}
 }

@@ -27,6 +27,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		protected XmlSchema schema { get; }
 
+		/// <summary>
+		/// Stores attributes that have been prohibited whilst the code
+		/// generates the attribute completion data.
+		/// </summary>
+		protected XmlSchemaObjectCollection prohibitedAttributes = new XmlSchemaObjectCollection ();
+
 		protected XmlCompletionSource (ITextView textView)
 		{
 			XmlParser = XmlBackgroundParser.GetParser (textView.TextBuffer);

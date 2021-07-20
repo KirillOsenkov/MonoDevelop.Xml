@@ -52,7 +52,11 @@ namespace MonoDevelop.Xml.Editor.Completion
 		bool readOnly = false;
 		bool loaded = false;
 
-		static string testFilename = "/Users/allisonkim/vsmac/main/external/MonoDevelop.Xml/Editor/Completion/snippetformat.xsd";
+		static string testFilePath = "/Users/allisonkim/vsmac/main/external/MonoDevelop.Xml/Editor/Completion/";
+		static string testFilename = "snippetformat.xsd";
+
+		static string testSnippetFilename = "snippetformat.xsd";
+		static string testBuildFilename = "Microsoft.Build.xsd";
 
 		/// <summary>
 		/// Stores attributes that have been prohibited whilst the code
@@ -62,7 +66,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		#region Constructors
 
-		public XmlSchemaCompletionProvider () : this(String.Empty, testFilename)
+		public XmlSchemaCompletionProvider () : this(String.Empty, testFilePath + testFilename)
 		{
 			// TODO: Handle when no schema is provided -> inferred schema?
 			// use a default xsd for testing
@@ -75,7 +79,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </summary>
 		public XmlSchemaCompletionProvider (TextReader reader)
 		{
-			ReadSchema (String.Empty, reader);
+			this.schema = ReadSchema (String.Empty, reader);
 		}
 
 		/// <summary>
@@ -101,7 +105,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 			if (!lazyLoadFile)
 				using (var reader = new StreamReader (fileName, true))
-					ReadSchema (baseUri, reader);
+					this.schema = ReadSchema (baseUri, reader);
 		}
 
 		#endregion
@@ -167,7 +171,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return Task.Run (() => {
 				if (schema == null)
 					using (var reader = new StreamReader (fileName, true))
-						ReadSchema (baseUri, reader);
+						this.schema = ReadSchema (baseUri, reader);
 
 				//TODO: should we evaluate unresolved imports against other registered schemas?
 				//will be messy because we'll have to re-evaluate if any schema is added, removed or changes
@@ -474,17 +478,26 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// <summary>
 		/// Loads the schema.
 		/// </summary>
-		void ReadSchema (XmlReader reader)
+		XmlSchema ReadSchema (XmlReader reader)
 		{
 			try {
-				schema = XmlSchema.Read (reader, SchemaValidation);
+				var schema = XmlSchema.Read (reader, SchemaValidation);
 				namespaceUri = schema.TargetNamespace;
+
+				// is probably bad when there's nested includes due to recursive stack calls...
+				foreach (XmlSchemaObject include in schema.Includes) {
+					var includeSchema = include as XmlSchemaInclude;
+					if (includeSchema != null) {
+						includeSchema.Schema = ReadSchema (testFilePath + includeSchema.SchemaLocation, baseUri);
+					}
+				}
+				return schema;
 			} finally {
 				reader.Close ();
 			}
 		}
 
-		void ReadSchema (string baseUri, TextReader reader)
+		XmlSchema ReadSchema (string baseUri, TextReader reader)
 		{
 			// The default resolve can cause exceptions loading
 			// xhtml1-strict.xsd because of the referenced dtds. It also has the
@@ -500,7 +513,14 @@ namespace MonoDevelop.Xml.Editor.Completion
 				},
 				baseUri
 			);
-			ReadSchema (xmlReader);
+			return ReadSchema (xmlReader);
+		}
+
+		// ak
+		XmlSchema ReadSchema (string fileName, string baseUri)
+		{
+			using (var reader = new StreamReader (fileName, true))
+				return ReadSchema (baseUri, reader);
 		}
 
 
