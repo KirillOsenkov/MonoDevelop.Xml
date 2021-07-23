@@ -53,7 +53,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 		bool loaded = false;
 
 		static string testFilePath = "/Users/allisonkim/vsmac/main/external/MonoDevelop.Xml/Editor/Completion/";
-		static string testFilename = "snippetformat.xsd";
+		static string testFilename = "Microsoft.Build.xsd";
 
 		static string testSnippetFilename = "snippetformat.xsd";
 		static string testBuildFilename = "Microsoft.Build.xsd";

@@ -18,13 +18,10 @@ namespace MonoDevelop.Xml.Editor.Completion
 {
 	public class TestCompletionItemSource : XmlCompletionSource
 	{
-		private ImmutableArray<CompletionItem> sampleItems;
+		protected XmlSchema lastSearchedSchema = null;
+
 		public TestCompletionItemSource (ITextView textView, XmlSchema schema) : base(textView, schema)
-		{
-			//sampleItems = ImmutableArray.Create (
-			//	new CompletionItem ("Hello", this),
-			//	new CompletionItem ("World", this));
-		}
+		{}
 
 		/// <summary>
 		/// Converts the element to a complex type if possible.
@@ -32,7 +29,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 		XmlSchemaComplexType GetElementAsComplexType (XmlSchemaElement element)
 		{
 			return (element.SchemaType as XmlSchemaComplexType)
-				?? XmlSchemaCompletionProvider.FindNamedType (schema, element.SchemaTypeName);
+				?? FindNamedType (schema, element.SchemaTypeName);
 		}
 
 		#region CompletionSource overrides
@@ -168,7 +165,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 						var element = FindElement (childElement.RefName);
 						if (element != null) {
 							if (element.IsAbstract) {
-								AddSubstitionGroupElements (data, element.QualifiedName, prefix);
+								AddSubstitionGroupElements (data, element.Name, prefix);
 							} else {
 								data.AddElement (name, prefix, element.Annotation);
 							}
@@ -278,12 +275,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		public static XmlSchemaComplexType FindNamedType (XmlSchema schema, XmlQualifiedName name)
 		{
+
 			if (name == null)
 				return null;
 
-			foreach (XmlSchemaObject schemaObject in schema.Items) {
-				var complexType = schemaObject as XmlSchemaComplexType;
-				if (complexType != null && complexType.QualifiedName == name)
+			foreach (XmlSchemaComplexType complexType in schema.Items.OfType<XmlSchemaComplexType> ()) {
+				if (complexType != null && complexType.Name == name.Name)
 					return complexType;
 			}
 
@@ -300,11 +297,32 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return null;
 		}
 
-		public XmlSchemaElement FindElement (string name)
+		public XmlSchemaElement FindElement (string name, XmlSchema schema = null)
 		{
-			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ())
-				if (element.Name == name)
+			// me
+			if (schema == null) {
+				schema = this.schema;
+			}
+
+
+			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
+				//if (name.Equals (element.QualifiedName)) {
+				//	return element;
+				//}
+				if (name == element.Name) {
 					return element;
+				}
+			}
+
+			// Try included schemas.
+			foreach (XmlSchemaExternal external in schema.Includes) {
+				var include = external as XmlSchemaInclude;
+				if (include != null && include.Schema != null) {
+					var matchedElement = FindElement (name, include.Schema);
+					if (matchedElement != null)
+						return matchedElement;
+				}
+			}
 
 			LoggingService.LogDebug ("XmlSchemaDataObject did not find element '{0}' in the schema", name);
 			return null;
@@ -441,7 +459,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 						} else {
 							var abstractElement = FindElement (element.RefName);
 							if (abstractElement != null && abstractElement.IsAbstract) {
-								matchedElement = FindSubstitutionGroupElement (abstractElement.QualifiedName, name);
+								matchedElement = FindSubstitutionGroupElement (abstractElement.Name, name.Name);
 							}
 						}
 					}
@@ -566,15 +584,30 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// <summary>
 		/// Finds the schema group with the specified name.
 		/// </summary>
-		public XmlSchemaGroup FindGroup (string name)
+		public XmlSchemaGroup FindGroup (string name, XmlSchema schema = null)
 		{
+			// me
+			if (schema == null) {
+				schema = this.schema;
+			}
+
 			if (name != null) {
-				foreach (XmlSchemaObject schemaObject in schema.Groups.Values) {
-					var group = schemaObject as XmlSchemaGroup;
+				foreach (XmlSchemaGroup group in schema.Items.OfType<XmlSchemaGroup> ()) {
 					if (group != null && group.Name == name)
 						return group;
 				}
 			}
+
+			// Try included schemas.
+			foreach (XmlSchemaExternal external in schema.Includes) {
+				var include = external as XmlSchemaInclude;
+				if (include != null && include.Schema != null) {
+					var matchedGroup = FindGroup (name, include.Schema);
+					if (matchedGroup != null)
+						return matchedGroup;
+				}
+			}
+
 			return null;
 		}
 
@@ -893,21 +926,63 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// <summary>
 		/// Adds any elements that have the specified substitution group.
 		/// </summary>
-		void AddSubstitionGroupElements (XmlSchemaCompletionBuilder data, XmlQualifiedName group, string prefix)
+		void AddSubstitionGroupElements (XmlSchemaCompletionBuilder data, string groupName, string prefix, XmlSchema schema = null)
 		{
-			foreach (XmlSchemaElement element in schema.Elements.Values)
-				if (element.SubstitutionGroup == group)
+			//foreach (XmlSchemaElement element in schema.Elements.Values)
+			//	if (element.SubstitutionGroup == group)
+			//		data.AddElement (element.Name, prefix, element.Annotation);
+
+			// me
+			if (schema == null) {
+				schema = this.schema;
+			}
+
+
+			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
+				if (element.SubstitutionGroup.Name == groupName) {
 					data.AddElement (element.Name, prefix, element.Annotation);
+				}
+			}
+
+			// Try included schemas.
+			foreach (XmlSchemaExternal external in schema.Includes) {
+				var include = external as XmlSchemaInclude;
+				if (include != null && include.Schema != null) {
+					AddSubstitionGroupElements (data, groupName, prefix, include.Schema);
+				}
+			}
 		}
 
 		/// <summary>
 		/// Looks for the substitution group element of the specified name.
 		/// </summary>
-		XmlSchemaElement FindSubstitutionGroupElement (XmlQualifiedName group, QualifiedName name)
+		XmlSchemaElement FindSubstitutionGroupElement (string groupName, string name, XmlSchema schema = null)
 		{
-			foreach (XmlSchemaElement element in schema.Elements.Values)
-				if (element.SubstitutionGroup == group && element.Name != null && element.Name == name.Name)
+			//foreach (XmlSchemaElement element in schema.Elements.Values)
+			//	if (element.SubstitutionGroup == group && element.Name != null && element.Name == name.Name)
+			//		return element;
+
+			// me
+			if (schema == null) {
+				schema = this.schema;
+			}
+
+
+			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
+				if (element.SubstitutionGroup.Name == groupName && element.Name != null && element.Name == name) {
 					return element;
+				}
+			}
+
+			// Try included schemas.
+			foreach (XmlSchemaExternal external in schema.Includes) {
+				var include = external as XmlSchemaInclude;
+				if (include != null && include.Schema != null) {
+					var matchedElement = FindElement (name, include.Schema);
+					if (matchedElement != null)
+						return matchedElement;
+				}
+			}
 
 			return null;
 		}
