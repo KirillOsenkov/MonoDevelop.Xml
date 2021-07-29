@@ -16,11 +16,11 @@ using MonoDevelop.Xml.Dom;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
-	public class TestCompletionItemSource : XmlCompletionSource
+	public class XmlSchemaCompletionSource : XmlCompletionSource
 	{
 		protected XmlSchema lastSearchedSchema = null;
 
-		public TestCompletionItemSource (ITextView textView, XmlSchema schema) : base(textView, schema)
+		public XmlSchemaCompletionSource (ITextView textView, XmlSchema schema) : base(textView, schema)
 		{}
 
 		/// <summary>
@@ -45,7 +45,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 			var xmlPath = XmlElementPath.Resolve (nodePath);
 			if (node != null) {
 				var list = new XmlSchemaCompletionBuilder (this);
-				//var element = FindElement (node.Name.Name);
 				var element = FindElement (xmlPath);
 				if (element != null)
 					GetChildElementCompletionData (list, element, "");
