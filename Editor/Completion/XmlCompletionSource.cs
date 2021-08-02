@@ -38,11 +38,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 			XmlParser = XmlBackgroundParser.GetParser (textView.TextBuffer);
 			TextView = textView;
 			InitializeBuiltinItems ();
-
-			// test
-			//sampleItems = ImmutableArray.Create (
-			//	new CompletionItem ("Hello", this),
-			//	new CompletionItem ("World", this));
 		}
 
 		protected XmlCompletionSource (ITextView textView, XmlSchema schema) : this(textView)
