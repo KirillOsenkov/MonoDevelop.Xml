@@ -13,8 +13,7 @@
     <ProjectReference Include="..\external\MiniEditor\Microsoft.VisualStudio.MiniEditor\Microsoft.VisualStudio.MiniEditor.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="Schema\SchemaAssociationTests.cs" />
-    <Compile Remove="Schema\XmlSchemaNamespaceTests.cs" />
+    <Compile Remove="Schema\**\*" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="Schema\xhtml1-strict.xsd" />
@@ -23,10 +22,6 @@
   <ItemGroup>
     <EmbeddedResource Include="Schema\xhtml1-strict.xsd" LogicalName="xhtml1-strict.xsd" />
     <EmbeddedResource Include="Schema\XMLSchema.xsd" LogicalName="XMLSchema.xsd" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Schema\SchemaAssociationTests.cs" />
-    <None Include="Schema\XmlSchemaNamespaceTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.1.0" />
