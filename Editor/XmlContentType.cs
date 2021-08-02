@@ -48,10 +48,5 @@ namespace MonoDevelop.Xml.Editor
 		[Name (XmlContentTypeNames.Xsd)]
 		[BaseDefinition (XmlContentTypeNames.Xml)]
 		public static readonly ContentTypeDefinition XsdContentTypeDefinition = null;
-
-		[Export]
-		[Name (XmlContentTypeNames.Csproj)]
-		[BaseDefinition (XmlContentTypeNames.Xml)]
-		public static readonly ContentTypeDefinition CsprojContentTypeDefinition = null;
 	}
 }
