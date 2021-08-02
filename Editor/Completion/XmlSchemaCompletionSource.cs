@@ -89,7 +89,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 			var xmlPath = XmlElementPath.Resolve (nodePath);
 			if (node != null) {
 				var list = new XmlSchemaCompletionBuilder (this);
-				//var element = FindElement (node.Name.Name);
 				var element = FindElement (xmlPath);
 				if (element != null) {
 					var xmlAttribute = FindAttribute (GetElementAsComplexType (element), attribute.Name.Name);
@@ -104,6 +103,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		#endregion
 
+		#region ChildElementCompletion
 		/// <summary>
 		/// Gets the child element completion data for the xml element that exists
 		/// at the end of the specified path.
@@ -210,7 +210,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		void GetChildElementCompletionData (XmlSchemaCompletionBuilder data, XmlSchemaComplexContentExtension extension, string prefix)
 		{
-			var complexType = XmlSchemaCompletionProvider.FindNamedType (schema, extension.BaseTypeName);
+			var complexType = FindNamedType (schema, extension.BaseTypeName);
 			if (complexType != null)
 				GetChildElementCompletionData (data, complexType, prefix);
 
@@ -271,7 +271,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 				return;
 			}
 		}
+		#endregion
 
+		#region FindMethods
 		public static XmlSchemaComplexType FindNamedType (XmlSchema schema, XmlQualifiedName name)
 		{
 
@@ -298,7 +300,10 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		public XmlSchemaElement FindElement (string name, XmlSchema schema = null)
 		{
-			// me
+			if (this.schema == null) {
+				return null;
+			}
+
 			if (schema == null) {
 				schema = this.schema;
 			}
@@ -337,12 +342,16 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </remarks>
 		public XmlSchemaElement FindElement (XmlQualifiedName name, XmlSchema schema = null)
 		{
+			if (this.schema == null) {
+				return null;
+			}
+
 			if (schema == null) {
 				schema = this.schema;
 			}
 
-			//XmlSchemaElement matchedElement = null;
 			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement>()) {
+				// TODO: Figure out qualified names
 				//if (name.Equals (element.QualifiedName)) {
 				//	matchedElement = element;
 				//	break;
@@ -377,13 +386,17 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </remarks>
 		public XmlSchemaElement FindElement (QualifiedName name, XmlSchema schema = null)
 		{
-			// me
+			if(this.schema == null) {
+				return null;
+			}
+
 			if (schema == null) {
 				schema = this.schema;
 			}
 
 
 			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
+				// TODO: FIgure out qualified names
 				//if (name.Equals (element.QualifiedName)) {
 				//	return element;
 				//}
@@ -628,6 +641,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 			var qualifiedName = new XmlQualifiedName (name, schema.TargetNamespace);
 			return FindSimpleType (qualifiedName);
 		}
+		#endregion
 
 		#region AttributeCompletion
 
