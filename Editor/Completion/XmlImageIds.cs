@@ -11,13 +11,8 @@ namespace MonoDevelop.Xml.Editor.Completion
 {
 	public static class XmlImages
 	{
-		public static readonly Dictionary<string, int> TempImageIds = new Dictionary<string, int> ()
-		{
-			{ "XMLElement", 3245 },
-			{ "XMLAttribute", 3335 },
-		};
-		public static readonly ImageElement Element = CreateElement (TempImageIds["XMLElement"]);
-		public static readonly ImageElement Attribute = CreateElement (TempImageIds["XMLAttribute"]);
+		public static readonly ImageElement Element = CreateElement (3245);
+		public static readonly ImageElement Attribute = CreateElement (3335);
 		public static readonly ImageElement AttributeValue = CreateElement (KnownImageIds.Constant);
 		public static readonly ImageElement Namespace = CreateElement (KnownImageIds.XMLNamespace);
 		public static readonly ImageElement Comment = CreateElement (KnownImageIds.XMLCommentTag);
@@ -28,11 +23,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		static readonly Guid KnownImagesGuid = KnownImageIds.ImageCatalogGuid;
 
-
 		static ImageElement CreateElement (int id) =>
-			new ImageElement (new ImageId (new Guid (KnownImageIds.ImageCatalogGuidString), 3335));
-			//new ImageElement( new ImageId (new Guid ("ae27a6b0-e345-4288-96df-5eaf394ee369"), 3573));
-			//new ImageElement (new ImageId (new System.Guid ("{ae27a6b0-e345-4288-96df-5eaf394ee369}"), 324));
-
+			new ImageElement (new ImageId (new Guid (KnownImageIds.ImageCatalogGuidString), id));
 	}
 }
