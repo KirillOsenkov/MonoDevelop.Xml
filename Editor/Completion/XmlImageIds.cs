@@ -2,7 +2,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections.Generic;
 using Microsoft.VisualStudio.Core.Imaging;
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Text.Adornments;
@@ -22,8 +21,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 		public static ImageElement ClosingTag = Element;
 
 		static readonly Guid KnownImagesGuid = KnownImageIds.ImageCatalogGuid;
-
-		static ImageElement CreateElement (int id) =>
-			new ImageElement (new ImageId (new Guid (KnownImageIds.ImageCatalogGuidString), id));
+		static ImageElement CreateElement (int id) => new ImageElement (new ImageId (KnownImagesGuid, id));
 	}
 }

@@ -12,7 +12,7 @@ using MonoDevelop.Xml.Dom;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
-	public class XmlSchemaCompletionSource : XmlCompletionSource
+	class XmlSchemaCompletionSource : XmlCompletionSource
 	{
 		protected XmlSchema lastSearchedSchema = null;
 		protected XmlSchema schema { get; }
