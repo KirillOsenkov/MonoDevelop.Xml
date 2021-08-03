@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
 using Microsoft.VisualStudio.Text;
@@ -106,12 +107,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return null;
 		}
 
-		public async virtual Task<object> GetDescriptionAsync (
+		public virtual Task<object> GetDescriptionAsync (
 			IAsyncCompletionSession session,
 			CompletionItem item,
 			CancellationToken token)
 		{
-			return await item.GetDocumentationAsync (session, token);
+			return item.GetDocumentationAsync (session, token);
 		}
 
 		public virtual CompletionStartData InitializeCompletion (CompletionTrigger trigger, SnapshotPoint triggerLocation, CancellationToken token)
