@@ -31,6 +31,7 @@ using System.Xml;
 using System.Xml.Schema;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
+using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 using MonoDevelop.Xml.Editor.Completion;
@@ -40,10 +41,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 	/// <summary>
 	/// Holds the completion (intellisense) data for an xml schema.
 	/// </summary>
-	[Export (typeof (IAsyncCompletionSourceProvider))]
-	[ContentType (XmlContentTypeNames.XmlCore)]
-	[Name ("XmlSchemaCompletionProvider")]
-	class XmlSchemaCompletionProvider : IAsyncCompletionSourceProvider
+	class XmlSchemaCompletionProvider
 	{
 		string namespaceUri = String.Empty;
 		XmlSchema schema = null;
@@ -51,12 +49,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 		string baseUri = string.Empty;
 		bool readOnly = false;
 		bool loaded = false;
-
-		static string testFilePath = "/Users/allisonkim/vsmac/main/external/MonoDevelop.Xml/Editor/Completion/";
-		static string testFilename = "Microsoft.Build.xsd";
-
-		static string testSnippetFilename = "snippetformat.xsd";
-		static string testBuildFilename = "Microsoft.Build.xsd";
 
 		/// <summary>
 		/// Stores attributes that have been prohibited whilst the code
@@ -105,15 +97,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 			if (!lazyLoadFile)
 				using (var reader = new StreamReader (fileName, true))
 					this.schema = ReadSchema (baseUri, reader);
-		}
-
-		#endregion
-
-		#region Provider
-
-		public IAsyncCompletionSource GetOrCreate (ITextView textView)
-		{
-			return new XmlSchemaCompletionSource(textView, schema);
 		}
 
 		#endregion
@@ -290,13 +273,10 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return ReadSchema (xmlReader);
 		}
 
-		// ak
 		XmlSchema ReadSchema (string fileName, string baseUri)
 		{
 			using (var reader = new StreamReader (fileName, true))
 				return ReadSchema (baseUri, reader);
 		}
-
-
 	}
 }

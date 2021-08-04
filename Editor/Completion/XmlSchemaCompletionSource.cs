@@ -14,7 +14,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 {
 	class XmlSchemaCompletionSource : XmlCompletionSource
 	{
-		protected XmlSchema lastSearchedSchema = null;
 		protected XmlSchema schema { get; }
 
 		public XmlSchemaCompletionSource (ITextView textView, XmlSchema schema) : base(textView)
@@ -946,15 +945,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </summary>
 		void AddSubstitionGroupElements (XmlSchemaCompletionBuilder data, string groupName, string prefix, XmlSchema schema = null)
 		{
-			//foreach (XmlSchemaElement element in schema.Elements.Values)
-			//	if (element.SubstitutionGroup == group)
-			//		data.AddElement (element.Name, prefix, element.Annotation);
-
-			// me
 			if (schema == null) {
 				schema = this.schema;
 			}
-
 
 			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
 				if (element.SubstitutionGroup.Name == groupName) {
@@ -976,15 +969,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </summary>
 		XmlSchemaElement FindSubstitutionGroupElement (string groupName, string name, XmlSchema schema = null)
 		{
-			//foreach (XmlSchemaElement element in schema.Elements.Values)
-			//	if (element.SubstitutionGroup == group && element.Name != null && element.Name == name.Name)
-			//		return element;
-
-			// me
 			if (schema == null) {
 				schema = this.schema;
 			}
-
 
 			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
 				if (element.SubstitutionGroup.Name == groupName && element.Name != null && element.Name == name) {

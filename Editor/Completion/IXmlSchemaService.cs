@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Xml.Schema;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
@@ -33,16 +34,18 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// <summary>
 		/// Gets the XML schema matching the filename.
 		/// </summary>
-		XmlSchemaCompletionProvider GetSchemaFromFileName (string filePath);
+		//XmlSchemaCompletionProvider GetSchemaFromFileName (string filePath);
 
 		/// <summary>
 		/// Gets the XML schema matching the namespace.
 		/// </summary>
-		XmlSchemaCompletionProvider GetSchemaFromNamespace (string namespaceUri);
+		//XmlSchemaCompletionProvider GetSchemaFromNamespace (string namespaceUri);
 
 		/// <summary>
 		/// Whether the file is an XML file and should be opened by the XML editor.
 		/// </summary>
-		bool IsXmlFileName (string filePath);
+		//bool IsXmlFileName (string filePath);
+
+		XmlSchema TryGetXmlSchemaForFile (string filePath);
 	}
 }
