@@ -22,19 +22,10 @@
 // THE SOFTWARE.
 
 using System;
-using System.ComponentModel.Composition;
 using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Schema;
-using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
-using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
-using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Editor;
-using Microsoft.VisualStudio.Utilities;
-using MonoDevelop.Xml.Editor.Completion;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
@@ -50,33 +41,21 @@ namespace MonoDevelop.Xml.Editor.Completion
 		bool readOnly = false;
 		bool loaded = false;
 
-		/// <summary>
-		/// Stores attributes that have been prohibited whilst the code
-		/// generates the attribute completion data.
-		/// </summary>
-		XmlSchemaObjectCollection prohibitedAttributes = new XmlSchemaObjectCollection ();
-
 		#region Constructors
-
-		public XmlSchemaCompletionProvider () : this(String.Empty, testFilePath + testFilename)
-		{
-			// TODO: Handle when no schema is provided -> inferred schema?
-			// use a default xsd for testing
-		}
 
 		/// <summary>
 		/// Creates completion data from the schema passed in 
 		/// via the reader object.
 		/// </summary>
-		public XmlSchemaCompletionProvider (TextReader reader)
+		public XmlSchemaCompletionProvider (TextReader reader, string filePath = null)
 		{
-			this.schema = ReadSchema (String.Empty, reader);
+			this.schema = ReadSchema (GetUri(filePath), reader);
 		}
 
 		/// <summary>
 		/// Creates the completion data from the specified schema file.
 		/// </summary>
-		public XmlSchemaCompletionProvider (string fileName) : this (String.Empty, fileName)
+		public XmlSchemaCompletionProvider (string fileName) : this (GetUri(fileName), fileName)
 		{
 		}
 
@@ -84,7 +63,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// Creates the completion data from the specified schema file and uses
 		/// the specified baseUri to resolve any referenced schemas.
 		/// </summary>
-		public XmlSchemaCompletionProvider (string baseUri, string fileName) : this (baseUri, fileName, false)
+		public XmlSchemaCompletionProvider (string baseUri, string fileName) : this (baseUri, fileName, lazyLoadFile: false)
 		{
 		}
 
@@ -95,8 +74,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 			this.baseUri = baseUri;
 
 			if (!lazyLoadFile)
-				using (var reader = new StreamReader (fileName, true))
-					this.schema = ReadSchema (baseUri, reader);
+				this.schema = ReadSchema (fileName, baseUri);
 		}
 
 		#endregion
@@ -152,8 +130,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 			return Task.Run (() => {
 				if (schema == null)
-					using (var reader = new StreamReader (fileName, true))
-						this.schema = ReadSchema (baseUri, reader);
+					this.schema = ReadSchema (fileName, baseUri);
 
 				//TODO: should we evaluate unresolved imports against other registered schemas?
 				//will be messy because we'll have to re-evaluate if any schema is added, removed or changes
@@ -235,7 +212,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// <summary>
 		/// Loads the schema.
 		/// </summary>
-		XmlSchema ReadSchema (XmlReader reader)
+		XmlSchema ReadSchema (XmlReader reader, string schemaFilePath = null)
 		{
 			try {
 				var schema = XmlSchema.Read (reader, SchemaValidation);
@@ -244,12 +221,22 @@ namespace MonoDevelop.Xml.Editor.Completion
 				// is probably bad when there's nested includes due to recursive stack calls...
 				foreach (XmlSchemaObject include in schema.Includes) {
 					var includeSchema = include as XmlSchemaInclude;
-					if (includeSchema != null) {
-						includeSchema.Schema = ReadSchema (testFilePath + includeSchema.SchemaLocation, baseUri);
+					if (includeSchema != null && schemaFilePath != null) {
+						var schemaDirectory = Path.GetDirectoryName(schemaFilePath);
+						var includedSchema = Path.Combine(schemaDirectory, includeSchema.SchemaLocation);
+						includedSchema = Path.GetFullPath(includedSchema);
+						if (File.Exists(includedSchema))
+						{
+							includeSchema.Schema = ReadSchema(includedSchema, GetUri(includedSchema));
+						}
 					}
 				}
 				return schema;
-			} finally {
+			}
+			catch {
+				return null;
+			}
+			finally {
 				reader.Close ();
 			}
 		}
@@ -270,12 +257,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 				},
 				baseUri
 			);
-			return ReadSchema (xmlReader);
+			return ReadSchema (xmlReader, baseUri);
 		}
 
 		XmlSchema ReadSchema (string fileName, string baseUri)
 		{
-			using (var reader = new StreamReader (fileName, true))
+			using (var reader = new StreamReader (fileName, detectEncodingFromByteOrderMarks: true))
 				return ReadSchema (baseUri, reader);
 		}
 	}

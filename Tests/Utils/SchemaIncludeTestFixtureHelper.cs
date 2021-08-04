@@ -37,28 +37,28 @@ namespace MonoDevelop.Xml.Tests.Utils
 			writer.WriteRaw(xml);
 			writer.Close();
 		}
-		
-		///// <summary>
-		///// Creates two schemas, one which references the other via an
-		///// xs:include.  Both schemas will exist in the same folder.
-		///// </summary>
-		///// <param name="mainSchema">The main schema's xml.</param>
-		///// <param name="includedSchema">The included schema's xml.</param>
-		//internal static XmlSchemaCompletionProvider CreateSchemaCompletionDataObject(string mainSchema, string includedSchema)
-		//{	
-		//	if (!Directory.Exists(schemaPath)) {
-		//		Directory.CreateDirectory(schemaPath);
-		//	}
-			
-		//	CreateSchema(Path.Combine(schemaPath, mainSchemaFileName), mainSchema);
-		//	CreateSchema(Path.Combine(schemaPath, includedSchemaFileName), includedSchema);
-			
-		//	// Parse schema.
-		//	string schemaFileName = Path.Combine(schemaPath, mainSchemaFileName);
-		//	string baseUri = XmlSchemaCompletionProvider.GetUri(schemaFileName);
-		//	return new XmlSchemaCompletionProvider(baseUri, schemaFileName);
-		//}
-		
+
+		/// <summary>
+		/// Creates two schemas, one which references the other via an
+		/// xs:include.  Both schemas will exist in the same folder.
+		/// </summary>
+		/// <param name="mainSchema">The main schema's xml.</param>
+		/// <param name="includedSchema">The included schema's xml.</param>
+		internal static XmlSchemaCompletionProvider CreateSchemaCompletionDataObject (string mainSchema, string includedSchema)
+		{
+			if (!Directory.Exists (schemaPath)) {
+				Directory.CreateDirectory (schemaPath);
+			}
+
+			CreateSchema (Path.Combine (schemaPath, mainSchemaFileName), mainSchema);
+			CreateSchema (Path.Combine (schemaPath, includedSchemaFileName), includedSchema);
+
+			// Parse schema.
+			string schemaFileName = Path.Combine (schemaPath, mainSchemaFileName);
+			string baseUri = XmlSchemaCompletionProvider.GetUri (schemaFileName);
+			return new XmlSchemaCompletionProvider (baseUri, schemaFileName);
+		}
+
 		/// <summary>
 		/// Removes any files generated for the test fixture.
 		/// </summary>

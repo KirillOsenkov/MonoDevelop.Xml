@@ -9,8 +9,6 @@
     <Compile Remove="BaseXmlEditorExtension.cs" />
     <Compile Remove="XmlParsedDocument.cs" />
     <Compile Remove="XmlTextEditorExtension.cs" />
-    <Compile Remove="Completion\XmlSchemaCompletionProvider.cs" />
-    <Compile Remove="Completion\XmlSchemaCompletionDataCollection.cs" />
   </ItemGroup>
 
   <ItemGroup>
