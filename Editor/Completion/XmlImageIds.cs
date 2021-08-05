@@ -10,6 +10,13 @@ namespace MonoDevelop.Xml.Editor.Completion
 {
 	public static class XmlImages
 	{
+		// Warning: the order of these static fields is important,
+		// declare in the order they depend on one another.
+		// If this Guid is at the end, the other fields will read the empty value before it gets initialized
+		static readonly Guid KnownImagesGuid = KnownImageIds.ImageCatalogGuid;
+
+		static ImageElement CreateElement (int id) => new ImageElement (new ImageId (KnownImagesGuid, id));
+
 		public static readonly ImageElement Element = CreateElement (3245);
 		public static readonly ImageElement Attribute = CreateElement (3335);
 		public static readonly ImageElement AttributeValue = CreateElement (KnownImageIds.Constant);
@@ -19,8 +26,5 @@ namespace MonoDevelop.Xml.Editor.Completion
 		public static readonly ImageElement Prolog = CreateElement (KnownImageIds.XMLProcessInstructionTag);
 		public static readonly ImageElement Entity = Prolog;
 		public static ImageElement ClosingTag = Element;
-
-		static readonly Guid KnownImagesGuid = KnownImageIds.ImageCatalogGuid;
-		static ImageElement CreateElement (int id) => new ImageElement (new ImageId (KnownImagesGuid, id));
 	}
 }
