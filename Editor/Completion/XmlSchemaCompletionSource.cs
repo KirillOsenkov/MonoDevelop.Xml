@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,20 +6,26 @@ using System.Xml;
 using System.Xml.Schema;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
-using Microsoft.VisualStudio.Language.StandardClassification;
 using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Editor;
 using MonoDevelop.Xml.Dom;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
-	public class XmlSchemaCompletionSource : XmlCompletionSource
+	class XmlSchemaCompletionSource : XmlCompletionSource
 	{
-		protected XmlSchema lastSearchedSchema = null;
+		protected XmlSchema schema { get; }
 
-		public XmlSchemaCompletionSource (ITextView textView, XmlSchema schema) : base(textView, schema)
-		{}
+		public XmlSchemaCompletionSource (ITextView textView, XmlSchema schema) : base(textView)
+		{
+			this.schema = schema;
+		}
+
+		/// <summary>
+		/// Stores attributes that have been prohibited whilst the code
+		/// generates the attribute completion data.
+		/// </summary>
+		protected XmlSchemaObjectCollection prohibitedAttributes = new XmlSchemaObjectCollection ();
 
 		/// <summary>
 		/// Converts the element to a complex type if possible.
@@ -941,15 +945,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </summary>
 		void AddSubstitionGroupElements (XmlSchemaCompletionBuilder data, string groupName, string prefix, XmlSchema schema = null)
 		{
-			//foreach (XmlSchemaElement element in schema.Elements.Values)
-			//	if (element.SubstitutionGroup == group)
-			//		data.AddElement (element.Name, prefix, element.Annotation);
-
-			// me
 			if (schema == null) {
 				schema = this.schema;
 			}
-
 
 			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
 				if (element.SubstitutionGroup.Name == groupName) {
@@ -971,15 +969,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </summary>
 		XmlSchemaElement FindSubstitutionGroupElement (string groupName, string name, XmlSchema schema = null)
 		{
-			//foreach (XmlSchemaElement element in schema.Elements.Values)
-			//	if (element.SubstitutionGroup == group && element.Name != null && element.Name == name.Name)
-			//		return element;
-
-			// me
 			if (schema == null) {
 				schema = this.schema;
 			}
-
 
 			foreach (XmlSchemaElement element in schema.Items.OfType<XmlSchemaElement> ()) {
 				if (element.SubstitutionGroup.Name == groupName && element.Name != null && element.Name == name) {

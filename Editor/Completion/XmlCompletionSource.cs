@@ -7,8 +7,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Schema;
+
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
 using Microsoft.VisualStudio.Text;
@@ -25,29 +24,11 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		protected ITextView TextView { get; }
 
-		protected XmlSchema schema { get; }
-
-		/// <summary>
-		/// Stores attributes that have been prohibited whilst the code
-		/// generates the attribute completion data.
-		/// </summary>
-		protected XmlSchemaObjectCollection prohibitedAttributes = new XmlSchemaObjectCollection ();
-
 		protected XmlCompletionSource (ITextView textView)
 		{
 			XmlParser = XmlBackgroundParser.GetParser (textView.TextBuffer);
 			TextView = textView;
 			InitializeBuiltinItems ();
-
-			// test
-			//sampleItems = ImmutableArray.Create (
-			//	new CompletionItem ("Hello", this),
-			//	new CompletionItem ("World", this));
-		}
-
-		protected XmlCompletionSource (ITextView textView, XmlSchema schema) : this(textView)
-		{
-			this.schema = schema;
 		}
 
 		public async virtual Task<CompletionContext> GetCompletionContextAsync (
@@ -126,12 +107,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return null;
 		}
 
-		public async virtual Task<object> GetDescriptionAsync (
+		public virtual Task<object> GetDescriptionAsync (
 			IAsyncCompletionSession session,
 			CompletionItem item,
 			CancellationToken token)
 		{
-			return await item.GetDocumentationAsync (session, token);
+			return item.GetDocumentationAsync (session, token);
 		}
 
 		public virtual CompletionStartData InitializeCompletion (CompletionTrigger trigger, SnapshotPoint triggerLocation, CancellationToken token)
