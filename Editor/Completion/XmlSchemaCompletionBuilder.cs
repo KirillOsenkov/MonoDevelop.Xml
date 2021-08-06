@@ -128,7 +128,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 				name = string.Concat (prefix, ":", name);
 
 			var item = new CompletionItem (name, source, XmlImages.Element);
-			item.AddDocumentation (annotation);
+			if (annotation != null) {
+				item.AddDocumentation (annotation);
+			}
 			items.Add (item);
 		}
 

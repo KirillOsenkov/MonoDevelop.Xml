@@ -34,5 +34,6 @@ namespace MonoDevelop.Xml.Editor
 		public const string Xml = "xml";
 		public const string Xslt = "xslt";
 		public const string Xsd = "xsd";
+		public const string Csproj = "csproj";
 	}
 }
