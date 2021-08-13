@@ -10,9 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Editor\MonoDevelop.Xml.Editor.csproj" />
     <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
-    <ProjectReference Include="..\external\MiniEditor\Microsoft.VisualStudio.MiniEditor\Microsoft.VisualStudio.MiniEditor.csproj">
-      <Properties>DisableNerdbankGitVersioningInMiniEditor=true</Properties>
-    </ProjectReference>
+    <ProjectReference Include="..\external\MiniEditor\Microsoft.VisualStudio.MiniEditor\Microsoft.VisualStudio.MiniEditor.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Schema\SchemaAssociationTests.cs" />
