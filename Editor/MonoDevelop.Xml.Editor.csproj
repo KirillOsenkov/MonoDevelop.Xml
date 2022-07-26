@@ -2,11 +2,24 @@
 
   <PropertyGroup>
     <TargetFrameworks>net6.0;net472</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
     <!--
       NU1701 - Restoring some net472 packages in net6.0.
     -->
     <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>MonoDevelop.Xml.Editor</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>mhutch, Microsoft</Authors>
+    <Company>Microsoft</Company>
+    <Summary>A full-fidelity XML language service</Summary>
+    <Description>A full-fidelity XML language service.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/xamarin/MonoDevelop.Xml</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/xamarin/MonoDevelop.Xml</RepositoryUrl>
+    <PackageTags>Xml Parser</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,11 +36,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
-    <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="17.1.32107.28" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Language" Version="17.1.387" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.1.387" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.1.387" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.1.46" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="17.2.32505.113" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Language" Version="17.2.3194" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.2.3194" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.2.3194" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.2.32" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>

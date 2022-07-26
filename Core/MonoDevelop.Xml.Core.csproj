@@ -2,6 +2,20 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>MonoDevelop.Xml.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>mhutch, Microsoft</Authors>
+    <Company>Microsoft</Company>
+    <Summary>A full-fidelity XML parser</Summary>
+    <Description>A full-fidelity XML parser. Produces a syntax tree from XML text, and provides low-level API to examine the exact structure of the source text.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/xamarin/MonoDevelop.Xml</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/xamarin/MonoDevelop.Xml</RepositoryUrl>
+    <PackageTags>Xml Parser</PackageTags>
+  </PropertyGroup>
+
 </Project>
