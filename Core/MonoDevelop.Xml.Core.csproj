@@ -7,7 +7,6 @@
   <PropertyGroup>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>MonoDevelop.Xml.Core</PackageId>
-    <Version>1.0.0</Version>
     <Authors>mhutch, Microsoft</Authors>
     <Company>Microsoft</Company>
     <Summary>A full-fidelity XML parser</Summary>
