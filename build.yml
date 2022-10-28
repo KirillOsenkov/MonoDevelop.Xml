@@ -7,6 +7,10 @@ pr:
 pool:
   vmImage: ubuntu-latest
 
+variables:
+- name: Codeql.Enabled
+  value: true
+
 steps:
 
 - task: NuGetAuthenticate@0
