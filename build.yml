@@ -10,6 +10,8 @@ pool:
 variables:
 - name: Codeql.Enabled
   value: true
+- name: Codeql.TSAEnabled
+  value: true
 
 steps:
 
