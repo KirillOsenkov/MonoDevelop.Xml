@@ -2,29 +2,12 @@
 
   <PropertyGroup>
     <TargetFrameworks>net48;net6.0</TargetFrameworks>
-    <!--
-      NU1701 - Restoring some net472 packages in net6.0.
-    -->
-    <NoWarn>$(NoWarn);NU1701</NoWarn>  </PropertyGroup>
-
   <ItemGroup>
 
     <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
     <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="17.2.32505.113" ExcludeAssets="runtime" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.2.3194" ExcludeAssets="runtime" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.2.3194" ExcludeAssets="runtime" NoWarn="NU1701" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.2.32" ExcludeAssets="runtime" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="System.ComponentModel.Composition" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="17.2.32505.113" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Language" Version="17.2.3194" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.2.3194" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.2.3194" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.2.32" ExcludeAssets="runtime" />
   </ItemGroup>
 
