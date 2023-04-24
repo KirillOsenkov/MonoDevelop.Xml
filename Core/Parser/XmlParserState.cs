@@ -80,6 +80,7 @@ namespace MonoDevelop.Xml.Parser
 		}
 	}
 
+
 	/// <summary>
 	/// Thrown when the XmlParserState node graph was not created correctly
 	/// </summary>
