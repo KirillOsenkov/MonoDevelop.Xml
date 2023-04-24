@@ -2,8 +2,9 @@
 
   <PropertyGroup>
     <TargetFrameworks>net48;net6.0</TargetFrameworks>
-  <ItemGroup>
+  </PropertyGroup>
 
+  <ItemGroup>
     <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
     <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="17.2.32505.113" ExcludeAssets="runtime" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.2.3194" ExcludeAssets="runtime" NoWarn="NU1701" />
