@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net48;net6.0</TargetFrameworks>
+    <NUnitDisableSupportAssemblies>true</NUnitDisableSupportAssemblies>
+    <RootNamespace>MonoDevelop.Xml.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <Nullable Condition="$(TargetFramework)=='net48'">annotations</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\xhtml1-strict.xsd" />
+    <None Remove="Resources\XMLSchema.xsd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\xhtml1-strict.xsd" LogicalName="xhtml1-strict.xsd" />
+    <EmbeddedResource Include="Resources\XMLSchema.xsd" LogicalName="XMLSchema.xsd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.2.0" />
+    <PackageReference Include="NUnit" Version="3.13.3" />
+    <PackageReference Include="NUnit.Analyzers" Version="3.3.0" />
+    <!-- this preview package is currently required for the adaptor to work on systems where .NET 7 previews are installed -->
+    <PackageReference Include="NUnit3TestAdapter" Version="4.3.0-alpha-net7.4" />
+  </ItemGroup>
+</Project>

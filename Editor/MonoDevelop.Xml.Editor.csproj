@@ -1,40 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net472</TargetFrameworks>
+    <TargetFrameworks>net48;net6.0</TargetFrameworks>
     <!--
       NU1701 - Restoring some net472 packages in net6.0.
     -->
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <PackageId>MonoDevelop.Xml.Editor</PackageId>
-    <Authors>mhutch, Microsoft</Authors>
-    <Company>Microsoft</Company>
-    <Summary>A full-fidelity XML language service</Summary>
-    <Description>A full-fidelity XML language service.</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/xamarin/MonoDevelop.Xml</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/xamarin/MonoDevelop.Xml</RepositoryUrl>
-    <PackageTags>Xml Parser</PackageTags>
-  </PropertyGroup>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>  </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="BaseXmlEditorExtension.cs" />
-    <Compile Remove="XmlParsedDocument.cs" />
-    <Compile Remove="XmlTextEditorExtension.cs" />
-  </ItemGroup>
 
-  <ItemGroup>
-    <None Include="BaseXmlEditorExtension.cs" />
-    <None Include="XmlParsedDocument.cs" />
-    <None Include="XmlTextEditorExtension.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
+    <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="17.2.32505.113" ExcludeAssets="runtime" NoWarn="NU1701" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.2.3194" ExcludeAssets="runtime" NoWarn="NU1701" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.2.3194" ExcludeAssets="runtime" NoWarn="NU1701" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.2.32" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.ComponentModel.Composition" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,7 +7,7 @@ namespace MonoDevelop.Xml.Parser
 {
 	public class XmlTextState : XmlParserState
 	{
-		public override XmlParserState PushChar (char c, XmlParserContext context, ref string rollback)
+		public override XmlParserState? PushChar (char c, XmlParserContext context, ref string? rollback)
 		{
 			if (context.CurrentStateLength == 0) {
 				context.Nodes.Push (new XText (context.Position));
@@ -43,7 +43,7 @@ namespace MonoDevelop.Xml.Parser
 			return null;
 		}
 
-		public override XmlParserContext TryRecreateState (XObject xobject, int position)
+		public override XmlParserContext? TryRecreateState (XObject xobject, int position)
 		{
 			if (xobject is XText text && position >= text.Span.Start && position < text.Span.End) {
 
@@ -56,15 +56,23 @@ namespace MonoDevelop.Xml.Parser
 					parents.Push (new XText (text.Span.Start));
 				}
 
-				return new XmlParserContext {
-					CurrentState = this,
-					Position = position,
-					PreviousState = Parent,
-					CurrentStateLength = sb.Length,
-					KeywordBuilder = sb,
-					Nodes = parents,
-					StateTag = position
-				};
+				int lastNonWhitespace = position;
+				for (int i = sb.Length - 1; i >= 0; i--) {
+					if (!XmlChar.IsWhitespace (text.Text[i])) {
+						lastNonWhitespace = position - sb.Length + i;
+						break;
+					}
+				}
+
+				return new (
+					currentState: this,
+					position: position,
+					previousState: Parent,
+					currentStateLength: sb.Length,
+					keywordBuilder: sb,
+					nodes: parents,
+					stateTag: lastNonWhitespace
+				);
 			}
 
 			return null;

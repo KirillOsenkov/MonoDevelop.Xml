@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Tagging;
@@ -20,18 +20,21 @@ namespace MonoDevelop.MSBuild.Editor.HighlightReferences
 {
 	class XmlHighlightEndTagTagger : HighlightTagger<ITextMarkerTag, ITextMarkerTag>
 	{
+		readonly XmlParserProvider parserProvider;
+
 		public XmlHighlightEndTagTagger (
-			ITextView textView, XmlHighlightEndTagTaggerProvider provider
+			ITextView textView, XmlHighlightEndTagTaggerProvider provider, ILogger logger
 			)
-			: base (textView, provider.JoinableTaskContext)
+			: base (textView, provider.JoinableTaskContext, logger)
 		{
+			parserProvider = provider.ParserProvider;
 		}
 
 		protected async override
 			Task<(SnapshotSpan sourceSpan, ImmutableArray<(ITextMarkerTag kind, SnapshotSpan location)> highlights)>
 			GetHighlightsAsync (SnapshotPoint caretLocation, CancellationToken token)
 		{
-			if (!XmlBackgroundParser.TryGetParser (TextView.TextBuffer, out var parser)) {
+			if (!parserProvider.TryGetParser (TextView.TextBuffer, out var parser)) {
 				return Empty;
 			}
 
