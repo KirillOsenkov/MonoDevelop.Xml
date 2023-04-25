@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Schema;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
 using Microsoft.VisualStudio.Text;
@@ -16,7 +17,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 	{
 		protected XmlSchema schema { get; }
 
-		public XmlSchemaCompletionSource (ITextView textView, XmlSchema schema) : base(textView)
+		public XmlSchemaCompletionSource (ITextView textView, XmlSchema schema, ILogger<XmlSchemaCompletionSource> logger, XmlParserProvider xmlParserProvider) : base(textView, logger, xmlParserProvider)
 		{
 			this.schema = schema;
 		}
@@ -332,7 +333,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 				}
 			}
 
-			LoggingService.LogDebug ("XmlSchemaDataObject did not find element '{0}' in the schema", name);
+			//LoggingService.LogDebug ("XmlSchemaDataObject did not find element '{0}' in the schema", name);
 			return null;
 		}
 
@@ -419,7 +420,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 				}
 			}
 
-			LoggingService.LogDebug ("XmlSchemaDataObject did not find element '{0}' in the schema", name.Name);
+			//LoggingService.LogDebug ("XmlSchemaDataObject did not find element '{0}' in the schema", name.Name);
 			return null;
 		}
 

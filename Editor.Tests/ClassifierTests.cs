@@ -9,19 +9,16 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using MonoDevelop.Xml.Editor;
 using MonoDevelop.Xml.Editor.Classification;
+using MonoDevelop.Xml.Editor.Completion;
+using MonoDevelop.Xml.Editor.Tests;
 using MonoDevelop.Xml.Tests.Completion;
-using MonoDevelop.Xml.Tests.EditorTestHelpers;
 using NUnit.Framework;
 
 namespace MonoDevelop.Xml.Tests
 {
 	[TestFixture]
-	public class ClassifierTests : EditorTestBase
+	public class ClassifierTests : XmlEditorTest
 	{
-		protected override string ContentTypeName => XmlContentTypeNames.XmlCore;
-
-		protected override (EditorEnvironment, EditorCatalog) InitializeEnvironment () => XmlTestEnvironment.EnsureInitialized ();
-
 		[Test]
 
 		[TestCase("<!--x-->", @"[0..2) xml - delimiter
@@ -116,7 +113,7 @@ namespace MonoDevelop.Xml.Tests
 		{
 			var provider = new XmlClassifierProvider (Catalog.ClassificationTypeRegistryService);
 			var buffer = base.CreateTextBuffer (xml);
-			var classifier = new XmlClassifier (buffer, provider.Types);
+			var classifier = new XmlClassifier (buffer, Catalog.GetService<XmlParserProvider>(), provider.Types);
 			var snapshot = buffer.CurrentSnapshot;
 
 			var classificationSpans = classifier.GetClassificationSpans (new SnapshotSpan (snapshot, 0, snapshot.Length));

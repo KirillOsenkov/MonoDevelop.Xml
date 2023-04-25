@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
+using MonoDevelop.Xml.Editor.Logging;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
@@ -13,6 +14,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 	{
 		[Import (AllowDefault = true)]
 		private IXmlSchemaService xmlSchemaService = null;
+
+		[Import]
+		private IEditorLoggerService loggerService = null;
+
+		[Import]
+		private XmlParserProvider xmlParserProvider = null;
 
 		private string TryGetFilePath (ITextBuffer textBuffer)
 		{
@@ -35,7 +42,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 				return null;
 			}
 
-			return new XmlSchemaCompletionSource (textView, schema);
+			var logger = loggerService.CreateLogger<XmlSchemaCompletionSource>(textView);
+
+			return new XmlSchemaCompletionSource (textView, schema, logger, xmlParserProvider);
 		}
 	}
 }

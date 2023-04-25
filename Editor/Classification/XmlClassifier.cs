@@ -20,6 +20,9 @@ namespace MonoDevelop.Xml.Editor.Classification
 	{
 		internal IClassificationType[] Types;
 
+		[Import]
+		public XmlParserProvider XmlParserProvider { get; set; }
+
 		[ImportingConstructor]
 		public XmlClassifierProvider (IClassificationTypeRegistryService classificationTypeRegistryService)
 		{
@@ -41,7 +44,7 @@ namespace MonoDevelop.Xml.Editor.Classification
 
 		public IClassifier GetClassifier (ITextBuffer textBuffer)
 		{
-			return new XmlClassifier (textBuffer, Types);
+			return new XmlClassifier (textBuffer, XmlParserProvider, Types);
 		}
 	}
 
@@ -52,10 +55,10 @@ namespace MonoDevelop.Xml.Editor.Classification
 
 		public event EventHandler<ClassificationChangedEventArgs> ClassificationChanged;
 
-		public XmlClassifier (ITextBuffer buffer, IClassificationType[] types = null)
+		public XmlClassifier (ITextBuffer buffer, XmlParserProvider xmlParserProvider, IClassificationType[] types = null)
 		{
 			this.types = types;
-			this.parser = XmlBackgroundParser.GetParser (buffer);
+			this.parser = xmlParserProvider.GetParser (buffer);
 		}
 
 		private XmlSpineParser spineParser;
