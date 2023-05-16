@@ -16,7 +16,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 		private IXmlSchemaService xmlSchemaService = null;
 
 		[Import]
-		private IEditorLoggerService loggerService = null;
+		private IEditorLoggerFactory loggerService = null;
 
 		[Import]
 		private XmlParserProvider xmlParserProvider = null;
