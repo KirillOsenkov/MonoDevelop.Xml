@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.CodeAnalysis.Editor.Shared.Extensions;
 using Microsoft.Extensions.Logging;
 
 using Microsoft.VisualStudio.Text;
@@ -67,7 +68,12 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 			var token = cancelSource.Token;
 
 			Task.Run (async () => {
-				var position = TextView.Caret.Position.BufferPosition;
+				var positionInSubjectBuffer = TextView.GetCaretPoint();
+				if (!positionInSubjectBuffer.HasValue) {
+					return;
+				}
+
+				var position = positionInSubjectBuffer.Value;
 				var newHighlights = await GetHighlightsAsync (position, token);
 				sourceSpan = newHighlights.highlights.Length == 0 ? (SnapshotSpan?)null : newHighlights.sourceSpan;
 
