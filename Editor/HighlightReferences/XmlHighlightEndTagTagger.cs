@@ -9,29 +9,27 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
-using Microsoft.VisualStudio.Text.Tagging;
 
 using MonoDevelop.Xml.Dom;
-using MonoDevelop.Xml.Editor.Completion;
 using MonoDevelop.Xml.Editor.HighlightReferences;
+using MonoDevelop.Xml.Editor.Parsing;
+using MonoDevelop.Xml.Editor.Tagging;
 using MonoDevelop.Xml.Parser;
 
 namespace MonoDevelop.MSBuild.Editor.HighlightReferences
 {
-	class XmlHighlightEndTagTagger : HighlightTagger<ITextMarkerTag, ITextMarkerTag>
+	class XmlHighlightEndTagTagger : HighlightTagger<NavigableHighlightTag, NavigableHighlightTag>
 	{
 		readonly XmlParserProvider parserProvider;
 
-		public XmlHighlightEndTagTagger (
-			ITextView textView, XmlHighlightEndTagTaggerProvider provider, ILogger logger
-			)
+		public XmlHighlightEndTagTagger (ITextView textView, XmlHighlightEndTagTaggerProvider provider, ILogger logger)
 			: base (textView, provider.JoinableTaskContext, logger)
 		{
 			parserProvider = provider.ParserProvider;
 		}
 
 		protected async override
-			Task<(SnapshotSpan sourceSpan, ImmutableArray<(ITextMarkerTag kind, SnapshotSpan location)> highlights)>
+			Task<(SnapshotSpan sourceSpan, ImmutableArray<(NavigableHighlightTag kind, SnapshotSpan location)> highlights)>
 			GetHighlightsAsync (SnapshotPoint caretLocation, CancellationToken token)
 		{
 			if (!parserProvider.TryGetParser (TextView.TextBuffer, out var parser)) {
@@ -61,25 +59,25 @@ namespace MonoDevelop.MSBuild.Editor.HighlightReferences
 			}
 			return Empty;
 
-			(SnapshotSpan sourceSpan, ImmutableArray<(ITextMarkerTag kind, SnapshotSpan location)> highlights)
+			(SnapshotSpan sourceSpan, ImmutableArray<(NavigableHighlightTag kind, SnapshotSpan location)> highlights)
 				CreateResult (TextSpan source, TextSpan target)
 				=> (
 					new SnapshotSpan (caretLocation.Snapshot, source.Start, source.Length),
-					ImmutableArray<(ITextMarkerTag kind, SnapshotSpan location)>.Empty
+					ImmutableArray<(NavigableHighlightTag kind, SnapshotSpan location)>.Empty
 					.Add ((
 						MatchingTagHighlightTag.Instance,
 						new SnapshotSpan (caretLocation.Snapshot, target.Start, target.Length)))
 				);
 		}
 
-		protected override ITextMarkerTag GetTag (ITextMarkerTag kind) => kind;
+		protected override NavigableHighlightTag GetTag (NavigableHighlightTag kind) => kind;
 	}
 
-	sealed class MatchingTagHighlightTag : TextMarkerTag
+	sealed class MatchingTagHighlightTag : NavigableHighlightTag
 	{
 		internal const string TagId = "brace matching";
 
-		public static readonly MatchingTagHighlightTag Instance = new MatchingTagHighlightTag ();
+		public static readonly MatchingTagHighlightTag Instance = new ();
 
 		private MatchingTagHighlightTag () : base (TagId) { }
 	}

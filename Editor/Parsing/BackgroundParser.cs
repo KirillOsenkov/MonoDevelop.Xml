@@ -1,37 +1,52 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+#nullable enable
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MonoDevelop.Xml.Editor.Completion
+namespace MonoDevelop.Xml.Editor.Parsing
 {
 	public abstract partial class BackgroundProcessor<TInput, TOutput> : IDisposable
 		where TInput : class
 		where TOutput : class
 	{
+		readonly IBackgroundParseService parseService;
+
+		protected BackgroundProcessor (IBackgroundParseService parseService)
+		{
+			this.parseService = parseService;
+		}
+
 		Operation CreateOperation (TInput input)
 		{
 			var tokenSource = new CancellationTokenSource ();
-			var task = StartOperationAsync (input, tokenSource.Token);
+
+			Task<TOutput> task;
+			try {
+				task = StartOperationAsync (input, tokenSource.Token);
+			} catch (Exception ex) {
+				OnUnhandledParseError (ex);
+				return new Operation (this, Task.FromException<TOutput> (ex), input, new CancellationTokenSource ());
+			}
+
 			var operation = new Operation (this, task, input, tokenSource);
+
+			parseService.RegisterBackgroundOperation (task);
 
 			#pragma warning disable VSTHRD110, VSTHRD105 // Observe result of async calls, Avoid method overloads that assume TaskScheduler.Current
 
 			//capture successful parses
 			task.ContinueWith ((t, state) => {
-				var op = ((Operation)state);
-				if (t.IsCompleted) {
+				Operation op = (Operation)state;
+				try {
+					// op.Output accesses the task.Result, thowing any exceptions
+					op.Processor.OnOperationCompleted (op.Input, op.Output);
 					op.Processor.lastSuccessfulOperation = op;
-					try {
-						op.Processor.OnOperationCompleted (op.Input, op.Output);
-					} catch (Exception ex) {
-						op.Processor.OnUnhandledParseError (ex);
-					}
-				}
-				if (t.IsFaulted) {
-					op.Processor.HandleUnhandledParseError (t.Exception);
+				} catch (Exception eventException) {
+					op.Processor.OnUnhandledParseError (eventException);
 				}
 			}, operation, tokenSource.Token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
@@ -48,16 +63,6 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		protected virtual void OnOperationCompleted (TInput input, TOutput output)
 		{
-		}
-
-		void HandleUnhandledParseError (Exception ex)
-		{
-			// ensure errors in error handlers don't crash us
-			try {
-				OnUnhandledParseError (ex);
-			} catch {
-				LastDitchLog (ex);
-			}
 		}
 
 		void LastDitchLog (Exception ex)
@@ -78,10 +83,10 @@ namespace MonoDevelop.Xml.Editor.Completion
 			LastDitchLog (ex);
 		}
 
-		Operation currentOperation;
-		Operation lastSuccessfulOperation;
+		Operation? currentOperation;
+		Operation? lastSuccessfulOperation;
 
-		protected abstract Task<TOutput> StartOperationAsync (TInput input, TOutput previousOutput, TInput previousInput, CancellationToken token);
+		protected abstract Task<TOutput> StartOperationAsync (TInput input, TOutput? previousOutput, TInput? previousInput, CancellationToken token);
 
 		protected abstract int CompareInputs (TInput a, TInput b);
 
@@ -91,10 +96,10 @@ namespace MonoDevelop.Xml.Editor.Completion
 			if (lastSuccessful != null && CompareInputs (lastSuccessful.Input, input) < 0) {
 				return StartOperationAsync (input, lastSuccessful.Output, lastSuccessful.Input, token);
 			}
-			return StartOperationAsync (input, default, null, token);
+			return StartOperationAsync (input, default, default, token);
 		}
 
-		public TOutput LastOutput => lastSuccessfulOperation?.Output;
+		public TOutput? LastOutput => lastSuccessfulOperation?.Output;
 
 		/// <summary>
 		/// Get an existing completed or running processor task for the provided input if available, or creates a new processor task.

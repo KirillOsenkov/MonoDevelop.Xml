@@ -12,13 +12,13 @@ using Microsoft.VisualStudio.Text;
 using MonoDevelop.Xml.Dom;
 using MonoDevelop.Xml.Parser;
 
-namespace MonoDevelop.Xml.Editor.Completion
+namespace MonoDevelop.Xml.Editor.Parsing
 {
 	public partial class XmlBackgroundParser : BufferParser<XmlParseResult>
 	{
 		private readonly ILogger logger;
 
-		public XmlBackgroundParser (ITextBuffer2 buffer, ILogger logger) : base (buffer)
+		public XmlBackgroundParser (ITextBuffer2 buffer, ILogger logger, IBackgroundParseService parseService) : base (buffer, parseService)
 		{
 			StateMachine = CreateParserStateMachine ();
 			this.logger = logger;
@@ -32,8 +32,8 @@ namespace MonoDevelop.Xml.Editor.Completion
 		protected XmlRootState StateMachine { get; private set; }
 
 		protected override Task<XmlParseResult> StartOperationAsync (ITextSnapshot input,
-			XmlParseResult previousOutput,
-			ITextSnapshot previousInput,
+			XmlParseResult? previousOutput,
+			ITextSnapshot? previousInput,
 			CancellationToken token)
 		{
 			var parser = new XmlTreeParser (StateMachine);
@@ -41,8 +41,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 				var length = input.Length;
 				for (int i = 0; i < length; i++) {
 					parser.Push (input[i]);
+					token.ThrowIfCancellationRequested ();
 				}
-				var (doc, diagnostics) = parser.FinalizeDocument ();
+				var (doc, diagnostics) = parser.EndAllNodes ();
 				return new XmlParseResult (doc, diagnostics, input);
 			}, token);
 		}
@@ -71,7 +72,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return position;
 		}
 
-		public XmlSpineParser GetSpineParser (SnapshotPoint point)
+		public XmlSpineParser GetSpineParser (SnapshotPoint point, CancellationToken token = default)
 		{
 			XmlSpineParser? parser = null;
 
@@ -84,16 +85,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 			if (prevParse != null) {
 				var startPos = Math.Min (point.Position, MaximumCompatiblePosition (prevParse.TextSnapshot, point.Snapshot));
 				if (startPos > 0) {
-					var obj = prevParse.XDocument.FindAtOrBeforeOffset (startPos);
-
-					// check for null as there may not be a node before startPos
-					if (obj != null) {
-						var state = StateMachine.TryRecreateState (obj, startPos);
-						if (state != null) {
-							LogRecovered (logger, state.Position, point.Position);
-							parser = new XmlSpineParser (state, StateMachine);
-						}
-					}
+					parser = XmlSpineParser.FromDocumentPosition (StateMachine, prevParse.XDocument, startPos);
 				}
 			}
 
@@ -104,6 +96,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 			var end = Math.Min (point.Position, point.Snapshot.Length);
 			for (int i = parser.Position; i < end; i++) {
+				token.ThrowIfCancellationRequested ();
 				parser.Push (point.Snapshot[i]);
 			}
 

@@ -97,12 +97,12 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 				await JoinableTaskContext.Factory.SwitchToMainThreadAsync (token);
 				TagsChanged?.Invoke (this, new SnapshotSpanEventArgs (updateSpan));
 			}, token)
-				.CatchAndLogWarning (Logger, "HighlightTagger.TimerFired");
+			.LogTaskExceptionsAndForget (Logger, "HighlightTagger.TimerFired");
 		}
 
-		readonly object highlightsLocker = new object ();
-		ImmutableArray<(TKind kind, SnapshotSpan location)> highlights
-			= ImmutableArray<(TKind kind, SnapshotSpan location)>.Empty;
+		readonly object highlightsLocker = new ();
+
+		ImmutableArray<(TKind kind, SnapshotSpan location)> highlights = ImmutableArray<(TKind kind, SnapshotSpan location)>.Empty;
 		ITextSnapshot highlightedSnapshot;
 		SnapshotSpan? sourceSpan;
 
@@ -244,7 +244,7 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 		}
 
 		/// <summary>
-		/// Considers items to be indentical if they intersect
+		/// Considers items to be identical if they intersect
 		/// </summary>
 		class IntersectionComparer : IComparer<(TKind kind, SnapshotSpan location)>
 		{

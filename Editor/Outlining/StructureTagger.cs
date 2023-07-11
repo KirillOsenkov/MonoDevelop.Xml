@@ -14,7 +14,7 @@ using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Tagging;
 
 using MonoDevelop.Xml.Dom;
-using MonoDevelop.Xml.Editor.Completion;
+using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Logging;
 
 namespace MonoDevelop.Xml.Editor.Tagging
@@ -36,6 +36,9 @@ namespace MonoDevelop.Xml.Editor.Tagging
 		public event EventHandler<SnapshotSpanEventArgs>? TagsChanged;
 
 		public IEnumerable<ITagSpan<IStructureTag>> GetTags (NormalizedSnapshotSpanCollection spans)
+			=> logger.InvokeAndLogExceptions (() => GetTagsInternal (spans));
+
+		IEnumerable<ITagSpan<IStructureTag>> GetTagsInternal (NormalizedSnapshotSpanCollection spans)
 		{
 			if (spans.Count == 0) {
 				return emptyTagList;
@@ -52,7 +55,7 @@ namespace MonoDevelop.Xml.Editor.Tagging
 			} else {
 				parseTask.ContinueWith (t => {
 					RaiseTagsChanged ();
-				}, TaskScheduler.Default).CatchAndLogWarning (logger);
+				}, TaskScheduler.Default).LogTaskExceptionsAndForget (logger);
 			}
 
 			return emptyTagList;

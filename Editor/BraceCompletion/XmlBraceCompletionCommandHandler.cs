@@ -3,6 +3,7 @@
 
 using System;
 using System.ComponentModel.Composition;
+using System.Threading;
 
 using Microsoft.VisualStudio.Commanding;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
@@ -13,7 +14,7 @@ using Microsoft.VisualStudio.Text.Editor.Commanding.Commands;
 using Microsoft.VisualStudio.Utilities;
 
 using MonoDevelop.Xml.Dom;
-using MonoDevelop.Xml.Editor.Completion;
+using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Parser;
 
 using BF = System.Reflection.BindingFlags;
@@ -59,11 +60,15 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 		public CommandState GetCommandState (TypeCharCommandArgs args, Func<CommandState> nextCommandHandler) => nextCommandHandler ();
 
 		public void ExecuteCommand (TypeCharCommandArgs args, Action nextCommandHandler, CommandExecutionContext executionContext)
+			=> ExecuteCommandInternal (args, nextCommandHandler, executionContext);
+
+		void ExecuteCommandInternal (TypeCharCommandArgs args, Action nextCommandHandler, CommandExecutionContext executionContext)
 		{
 			var view = args.TextView;
 			var buffer = args.SubjectBuffer;
 			var openingPoint = view.Caret.Position.BufferPosition;
 			char typedChar = args.TypedChar;
+			var token = executionContext.OperationContext.UserCancellationToken;
 
 			// short circuit on the easy checks
 			ITextSnapshot snapshot = openingPoint.Snapshot;
@@ -77,7 +82,7 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 
 			// overtype
 			if (IsQuoteChar(typedChar) && openingPoint > 0 && snapshot.Length > openingPoint && snapshot[openingPoint] == typedChar) {
-				var spine = parser.GetSpineParser (openingPoint);
+				var spine = parser.GetSpineParser (openingPoint, token);
 				if (spine.GetAttributeValueDelimiter () == typedChar) {
 					if (snapshot[openingPoint - 1] != typedChar) {
 						// in a quoted value typing its quote char over the end quote, and not immediately after start quote
@@ -134,6 +139,5 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 		static System.Reflection.PropertyInfo braceManagerEnabledProp;
 
 		static bool IsQuoteChar (char ch) => ch == '"' || ch == '\'';
-		static bool IsTriggerChar (char ch) => IsQuoteChar (ch) || ch == '=';
 	}
 }

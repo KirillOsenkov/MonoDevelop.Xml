@@ -40,6 +40,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 		public IEnumerable<char> PotentialCommitCharacters => allCommitChars;
 
 		public bool ShouldCommitCompletion (IAsyncCompletionSession session, SnapshotPoint location, char typedChar, CancellationToken token)
+			=> logger.InvokeAndLogExceptions (() => ShouldCommitCompletionInternal (session, location, typedChar, token));
+
+		bool ShouldCommitCompletionInternal (IAsyncCompletionSession session, SnapshotPoint location, char typedChar, CancellationToken token)
 		{
 			if (Array.IndexOf (allCommitChars, typedChar) < 0) {
 				return false;
@@ -53,19 +56,20 @@ namespace MonoDevelop.Xml.Editor.Completion
 			};
 
 			switch (kind) {
-			case XmlCompletionTrigger.Element:
-			case XmlCompletionTrigger.ElementWithBracket:
+			case XmlCompletionTrigger.Tag:
+			case XmlCompletionTrigger.ElementName:
+			case XmlCompletionTrigger.ElementValue:
 				// allow using / as a commit char for elements as self-closing elements, but special case disallowing it
 				// in the cases where that could conflict with typing the / at the start of a closing tag
 				if (typedChar == '/') {
 					var span = session.ApplicableToSpan.GetSpan (location.Snapshot);
-					if (span.Length == (kind == XmlCompletionTrigger.Element ? 0 : 1)) {
+					if (span.Length == (kind == XmlCompletionTrigger.ElementName ? 0 : 1)) {
 						return false;
 					}
 				}
 				return Array.IndexOf (tagCommitChars, typedChar) > -1;
 
-			case XmlCompletionTrigger.Attribute:
+			case XmlCompletionTrigger.AttributeName:
 				return Array.IndexOf (attributeCommitChars, typedChar) > -1;
 
 			case XmlCompletionTrigger.AttributeValue:
@@ -81,14 +85,24 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return false;
 		}
 
-		static readonly CommitResult CommitSwallowChar = new CommitResult (true, CommitBehavior.SuppressFurtherTypeCharCommandHandlers);
+		static readonly CommitResult CommitSwallowChar = new (true, CommitBehavior.SuppressFurtherTypeCharCommandHandlers);
 
-		static readonly CommitResult CommitCancel = new CommitResult (true, CommitBehavior.CancelCommit);
+		static readonly CommitResult CommitCancel = new (true, CommitBehavior.CancelCommit);
 
 		public CommitResult TryCommit (IAsyncCompletionSession session, ITextBuffer buffer, CompletionItem item, char typedChar, CancellationToken token)
+			=> logger.InvokeAndLogExceptions (() => TryCommitInternal (session, buffer, item, typedChar, token));
+
+		public CommitResult TryCommitInternal (IAsyncCompletionSession session, ITextBuffer buffer, CompletionItem item, char typedChar, CancellationToken token)
 		{
 			if (!item.TryGetKind (out var kind)) {
 				return CommitResult.Unhandled;
+			}
+
+			// per-item CommitCharacters overrides the default commit chars
+			if (!item.CommitCharacters.IsDefaultOrEmpty) {
+				if (item.CommitCharacters.Contains (typedChar)) {
+					return CommitCancel;
+				}
 			}
 
 			var span = session.ApplicableToSpan.GetSpan (buffer.CurrentSnapshot);
@@ -183,7 +197,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 				await provider.JoinableTaskContext.Factory.SwitchToMainThreadAsync ();
 				provider.CommandServiceFactory.GetService (textView).Execute ((v, b) => new Microsoft.VisualStudio.Text.Editor.Commanding.Commands.InvokeCompletionListCommandArgs (v, b), null);
 			});
-			task.CatchAndLogWarning (logger);
+			task.LogTaskExceptionsAndForget (logger);
 		}
 
 		static void ConsumeTrailingChar (ref SnapshotSpan span, char charToConsume)
