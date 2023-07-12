@@ -8,7 +8,7 @@ using System.Text;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Utilities;
-using MonoDevelop.Xml.Editor.Completion;
+using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Parser;
 using static MonoDevelop.Xml.Editor.Classification.XmlClassificationTypes;
 

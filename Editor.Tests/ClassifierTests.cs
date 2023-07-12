@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.Text.Classification;
 using MonoDevelop.Xml.Editor;
 using MonoDevelop.Xml.Editor.Classification;
 using MonoDevelop.Xml.Editor.Completion;
+using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Editor.Tests;
 using MonoDevelop.Xml.Tests.Completion;
 using NUnit.Framework;

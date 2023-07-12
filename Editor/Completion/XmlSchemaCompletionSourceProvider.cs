@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 using MonoDevelop.Xml.Editor.Logging;
+using MonoDevelop.Xml.Editor.Parsing;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {

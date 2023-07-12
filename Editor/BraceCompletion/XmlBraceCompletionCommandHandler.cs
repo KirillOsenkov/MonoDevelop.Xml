@@ -139,5 +139,6 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 		static System.Reflection.PropertyInfo braceManagerEnabledProp;
 
 		static bool IsQuoteChar (char ch) => ch == '"' || ch == '\'';
+		static bool IsTriggerChar(char ch) => IsQuoteChar(ch) || ch == '=';
 	}
 }

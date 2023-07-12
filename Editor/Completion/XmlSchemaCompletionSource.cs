@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -10,6 +11,7 @@ using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using MonoDevelop.Xml.Dom;
+using MonoDevelop.Xml.Editor.Parsing;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
@@ -38,7 +40,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 		}
 
 		#region CompletionSource overrides
-		protected override Task<CompletionContext> GetElementCompletionsAsync (
+		protected override Task<IList<CompletionItem>> GetElementCompletionsAsync (
 			IAsyncCompletionSession session,
 			SnapshotPoint triggerLocation,
 			List<XObject> nodePath,
@@ -53,12 +55,12 @@ namespace MonoDevelop.Xml.Editor.Completion
 				var element = FindElement (xmlPath);
 				if (element != null)
 					GetChildElementCompletionData (list, element, "");
-				return Task.FromResult(new CompletionContext (list.GetItems ()));
+				return Task.FromResult((IList<CompletionItem>)list.GetItems ());
 			}
-			return Task.FromResult (CompletionContext.Empty);
+			return noItems;
 		}
 
-		protected override Task<CompletionContext> GetAttributeCompletionsAsync (
+		protected override Task<IList<CompletionItem>> GetAttributeCompletionsAsync (
 			IAsyncCompletionSession session,
 			SnapshotPoint triggerLocation,
 			List<XObject> nodePath,
@@ -76,12 +78,14 @@ namespace MonoDevelop.Xml.Editor.Completion
 				var element = FindElement (xmlPath);
 				if (element != null)
 					GetAttributeCompletionData (list, element);
-				return Task.FromResult (new CompletionContext (list.GetItems ()));
+				return Task.FromResult ((IList<CompletionItem>)list.GetItems ());
 			}
-			return Task.FromResult (CompletionContext.Empty);
+			return noItems;
 		}
 
-		protected override Task<CompletionContext> GetAttributeValueCompletionsAsync (
+		private Task<IList<CompletionItem>> noItems = Task.FromResult((IList<CompletionItem>)Array.Empty<CompletionItem>());
+
+		protected override Task<IList<CompletionItem>> GetAttributeValueCompletionsAsync (
 			IAsyncCompletionSession session,
 			SnapshotPoint triggerLocation,
 			List<XObject> nodePath,
@@ -101,9 +105,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 						GetAttributeValueCompletionData (list, xmlAttribute);
 					}
 				}
-				return Task.FromResult (new CompletionContext (list.GetItems ()));
+				return Task.FromResult ((IList<CompletionItem>) list.GetItems ());
 			}
-			return Task.FromResult (CompletionContext.Empty);
+			return noItems;
 		}
 
 		#endregion
