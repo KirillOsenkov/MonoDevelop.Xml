@@ -6,6 +6,7 @@
 using System;
 using System.ComponentModel.Composition;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Commanding;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
@@ -15,8 +16,10 @@ using Microsoft.VisualStudio.Text.Editor.Commanding.Commands;
 using Microsoft.VisualStudio.Utilities;
 
 using MonoDevelop.Xml.Dom;
+using MonoDevelop.Xml.Editor.Logging;
 using MonoDevelop.Xml.Editor.Options;
 using MonoDevelop.Xml.Editor.Parsing;
+using MonoDevelop.Xml.Logging;
 
 namespace MonoDevelop.Xml.Editor.Commands
 {
@@ -30,13 +33,15 @@ namespace MonoDevelop.Xml.Editor.Commands
 		const string Name = "Closing Tag Completion";
 
 		[ImportingConstructor]
-		public AutoClosingTagCommandHandler (XmlParserProvider parserProvider, IAsyncCompletionBroker completionBroker)
+		public AutoClosingTagCommandHandler (XmlParserProvider parserProvider, IAsyncCompletionBroker completionBroker, IEditorLoggerFactory loggerFactory)
 		{
 			this.parserProvider = parserProvider;
 			this.completionBroker = completionBroker;
+			this.loggerFactory = loggerFactory;
 		}
 
 		readonly IAsyncCompletionBroker completionBroker;
+		readonly IEditorLoggerFactory loggerFactory;
 		readonly XmlParserProvider parserProvider;
 
 		public string DisplayName => Name;
@@ -54,7 +59,11 @@ namespace MonoDevelop.Xml.Editor.Commands
 			nextCommandHandler ();
 
 			if (args.TypedChar == '>' && args.TextView.Options.GetAutoInsertClosingTag ()) {
-				InsertCloseTag (args, executionContext);
+				try {
+					InsertCloseTag (args, executionContext);
+				} catch (Exception ex) {
+					loggerFactory.GetLogger<AutoClosingTagCommandHandler> (args.TextView).LogInternalException (ex);
+				}
 			}
 		}
 
@@ -110,9 +119,19 @@ namespace MonoDevelop.Xml.Editor.Commands
 			}
 
 			var bufferEdit = args.SubjectBuffer.CreateEdit ();
+
+			// if there's an extra > after committing due to VS losing track of overtype, delete it
+			ITextSnapshot snapshot = args.SubjectBuffer.CurrentSnapshot;
+			if (snapshot.Length > position && snapshot[position] == '>') {
+				bufferEdit.Delete (new Span (position, 1));
+			}
+
 			bufferEdit.Insert (position, $"</{el.Name.FullName}>");
+
 			bufferEdit.Apply ();
-			args.TextView.Caret.MoveTo (new SnapshotPoint (args.SubjectBuffer.CurrentSnapshot, position));
+			snapshot = args.SubjectBuffer.CurrentSnapshot;
+
+			args.TextView.Caret.MoveTo (new SnapshotPoint (snapshot, position));
 
 			if (completionSession != null) {
 				var trigger = new CompletionTrigger (
