@@ -29,7 +29,7 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 	{
 		const int triggerDelayMilliseconds = 200;
 
-		protected ITextView TextView { get;  }
+		protected internal ITextView TextView { get;  }
 		protected JoinableTaskContext JoinableTaskContext { get; }
 		readonly Timer timer;
 		protected ILogger Logger { get; }
@@ -60,6 +60,32 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 			ClearHighlightsAndRescheduleTimer (e.After);
 		}
 
+		// internal for testing
+		internal async Task<(SnapshotSpan? sourceSpan, SnapshotSpan tagsChangedSpan)?> UpdateHighlightsAsync (CancellationToken cancellationToken = default)
+		{
+			var position = TextView.Caret.Position.BufferPosition;
+			var newHighlights = await GetHighlightsAsync (position, cancellationToken).ConfigureAwait (false);
+			sourceSpan = newHighlights.highlights.Length == 0 ? (SnapshotSpan?)null : newHighlights.sourceSpan;
+
+			ImmutableArray<(TKind kind, SnapshotSpan location)> oldHighlights;
+			lock (highlightsLocker) {
+				oldHighlights = highlights;
+				highlights = newHighlights.highlights;
+				highlightedSnapshot = position.Snapshot;
+				if (cancellationToken.IsCancellationRequested) {
+					return null;
+				}
+			}
+
+			var oldSpan = GetHighlightedRange (highlights);
+			var newSpan = GetHighlightedRange (newHighlights.highlights);
+			var tagsChangedSpan = UnionNonEmpty (MapToCurrentIfNonEmpty (position.Snapshot, oldSpan), newSpan);
+			if (tagsChangedSpan.IsEmpty) {
+				return null;
+			}
+			return (sourceSpan, tagsChangedSpan);
+		}
+
 		void TimerFired (object state)
 		{
 			//only one timer is running and can assign this, so we don't have to lock
@@ -68,12 +94,7 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 			var token = cancelSource.Token;
 
 			Task.Run (async () => {
-				var positionInSubjectBuffer = TextView.GetCaretPoint();
-				if (!positionInSubjectBuffer.HasValue) {
-					return;
-				}
-
-				var position = positionInSubjectBuffer.Value;
+				var position = TextView.Caret.Position.BufferPosition;
 				var newHighlights = await GetHighlightsAsync (position, token);
 				sourceSpan = newHighlights.highlights.Length == 0 ? (SnapshotSpan?)null : newHighlights.sourceSpan;
 
@@ -86,16 +107,6 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 					highlights = newHighlights.highlights;
 					highlightedSnapshot = position.Snapshot;
 				}
-
-				var oldSpan = GetHighlightedRange (highlights);
-				var newSpan = GetHighlightedRange (newHighlights.highlights);
-				var updateSpan = UnionNonEmpty (MapToCurrentIfNonEmpty (position.Snapshot, oldSpan), newSpan);
-				if (updateSpan.IsEmpty) {
-					return;
-				}
-
-				await JoinableTaskContext.Factory.SwitchToMainThreadAsync (token);
-				TagsChanged?.Invoke (this, new SnapshotSpanEventArgs (updateSpan));
 			}, token)
 			.LogTaskExceptionsAndForget (Logger, "HighlightTagger.TimerFired");
 		}
