@@ -99,18 +99,11 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 			var token = cancelSource.Token;
 
 			Task.Run (async () => {
-				var position = TextView.Caret.Position.BufferPosition;
-				var newHighlights = await GetHighlightsAsync (position, token);
-				sourceSpan = newHighlights.highlights.Length == 0 ? (SnapshotSpan?)null : newHighlights.sourceSpan;
-
-				ImmutableArray<(TKind kind, SnapshotSpan location)> oldHighlights;
-				lock (highlightsLocker) {
-					if (token.IsCancellationRequested) {
-						return;
-					}
-					oldHighlights = highlights;
-					highlights = newHighlights.highlights;
-					highlightedSnapshot = position.Snapshot;
+				var updateResult = await UpdateHighlightsAsync().ConfigureAwait(false);
+				if (updateResult.HasValue)
+				{
+					await JoinableTaskContext.Factory.SwitchToMainThreadAsync(token);
+					TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(updateResult.Value.tagsChangedSpan));
 				}
 			}, token)
 			.LogTaskExceptionsAndForget (Logger, "HighlightTagger.TimerFired");
