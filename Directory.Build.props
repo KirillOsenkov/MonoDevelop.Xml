@@ -3,9 +3,6 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)private.snk</AssemblyOriginatorKeyFile>
     <LangVersion>latest</LangVersion>
-    <DebugType>embedded</DebugType>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 
   <ItemGroup>
