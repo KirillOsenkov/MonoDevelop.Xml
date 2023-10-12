@@ -79,7 +79,6 @@ namespace MonoDevelop.Xml.Editor.Parsing
 		{
 			XmlSpineParser? parser = null;
 
-
 			if (prevParse != null) {
 				var startPos = Math.Min (point.Position, MaximumCompatiblePosition (prevParse.TextSnapshot, point.Snapshot));
 				if (startPos > 0) {
