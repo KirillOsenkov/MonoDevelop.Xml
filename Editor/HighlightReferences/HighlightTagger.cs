@@ -99,11 +99,10 @@ namespace MonoDevelop.Xml.Editor.HighlightReferences
 			var token = cancelSource.Token;
 
 			Task.Run (async () => {
-				var updateResult = await UpdateHighlightsAsync().ConfigureAwait(false);
-				if (updateResult.HasValue)
-				{
-					await JoinableTaskContext.Factory.SwitchToMainThreadAsync(token);
-					TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(updateResult.Value.tagsChangedSpan));
+				var updateResult = await UpdateHighlightsAsync ().ConfigureAwait (false);
+				if (updateResult.HasValue) {
+					await JoinableTaskContext.Factory.SwitchToMainThreadAsync (token);
+					TagsChanged?.Invoke (this, new SnapshotSpanEventArgs (updateResult.Value.tagsChangedSpan));
 				}
 			}, token)
 			.LogTaskExceptionsAndForget (Logger, "HighlightTagger.TimerFired");
