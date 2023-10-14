@@ -12,10 +12,11 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using MonoDevelop.Xml.Dom;
 using MonoDevelop.Xml.Editor.Parsing;
+using MonoDevelop.Xml.Parser;
 
 namespace MonoDevelop.Xml.Editor.Completion
 {
-	class XmlSchemaCompletionSource : XmlCompletionSource
+	class XmlSchemaCompletionSource : XmlCompletionSource<XmlCompletionTriggerContext>
 	{
 		protected XmlSchema schema { get; }
 
@@ -23,6 +24,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 		{
 			this.schema = schema;
 		}
+
+		protected override XmlCompletionTriggerContext CreateTriggerContext(IAsyncCompletionSession session, CompletionTrigger trigger, XmlSpineParser spineParser, SnapshotPoint triggerLocation, SnapshotSpan applicableToSpan)
+			=> new(session, triggerLocation, spineParser, trigger, applicableToSpan);
 
 		/// <summary>
 		/// Stores attributes that have been prohibited whilst the code
@@ -40,14 +44,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 		}
 
 		#region CompletionSource overrides
-		protected override Task<IList<CompletionItem>> GetElementCompletionsAsync (
-			IAsyncCompletionSession session,
-			SnapshotPoint triggerLocation,
-			List<XObject> nodePath,
-			bool includeBracket,
-			CancellationToken token
-			)
+		protected override Task<IList<CompletionItem>> GetElementCompletionsAsync (XmlCompletionTriggerContext context, bool includeBracket, CancellationToken token)
 		{
+			var nodePath = context.NodePath;
 			var node = nodePath.Last () as XElement;
 			var xmlPath = XmlElementPath.Resolve (nodePath);
 			if (node != null) {
@@ -60,15 +59,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 			return noItems;
 		}
 
-		protected override Task<IList<CompletionItem>> GetAttributeCompletionsAsync (
-			IAsyncCompletionSession session,
-			SnapshotPoint triggerLocation,
-			List<XObject> nodePath,
-			IAttributedXObject attributedObject,
-			Dictionary<string, string> existingAtts,
-			CancellationToken token
-			)
+		protected override Task<IList<CompletionItem>> GetAttributeCompletionsAsync (XmlCompletionTriggerContext context, IAttributedXObject attributedObject, Dictionary<string, string> existingAtts, CancellationToken token)
 		{
+			var nodePath = context.NodePath;
 			// TODO: use `attributedObject` parameter for efficiency?
 			var node = nodePath.Last () as XElement;
 			var xmlPath = XmlElementPath.Resolve (nodePath);
@@ -85,15 +78,9 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		private Task<IList<CompletionItem>> noItems = Task.FromResult((IList<CompletionItem>)Array.Empty<CompletionItem>());
 
-		protected override Task<IList<CompletionItem>> GetAttributeValueCompletionsAsync (
-			IAsyncCompletionSession session,
-			SnapshotPoint triggerLocation,
-			List<XObject> nodePath,
-			IAttributedXObject attributedObject,
-			XAttribute attribute,
-			CancellationToken token
-			)
+		protected override Task<IList<CompletionItem>> GetAttributeValueCompletionsAsync (XmlCompletionTriggerContext context, IAttributedXObject attributedObject, XAttribute attribute, CancellationToken token)
 		{
+			var nodePath = context.NodePath;
 			var node = nodePath.Last () as XElement;
 			var xmlPath = XmlElementPath.Resolve (nodePath);
 			if (node != null) {
