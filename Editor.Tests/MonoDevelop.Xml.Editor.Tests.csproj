@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net48;net6.0</TargetFrameworks>
+    <TargetFramework>net48</TargetFramework>
     <NUnitDisableSupportAssemblies>true</NUnitDisableSupportAssemblies>
   </PropertyGroup>
 
@@ -10,7 +9,9 @@
     <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
     <ProjectReference Include="..\Core.Tests\MonoDevelop.Xml.Core.Tests.csproj" />
     <ProjectReference Include="..\Editor\MonoDevelop.Xml.Editor.csproj" />
+    <!--
     <ProjectReference Include="..\external\MiniEditor\Microsoft.VisualStudio.MiniEditor\Microsoft.VisualStudio.MiniEditor.csproj" NoWarn="NU1701" />
+    -->
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Schema\SchemaAssociationTests.cs" />
@@ -21,16 +22,36 @@
     <None Include="Schema\XmlSchemaNamespaceTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="NUnit" Version="3.14.0" />
-    <PackageReference Include="NUnit.Analyzers" Version="3.10.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="17.2.32505.113" NoWarn="NU1701" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.2.3194" NoWarn="NU1701" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.2.3194" NoWarn="NU1701" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.2.32" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading" />
+    <PackageReference Include="Microsoft.VisualStudio.Editor" />
+    <!--
+    Most of these references are to resolve issues in Microsoft.VisualStudio.Editor,
+    which frequently has dependencies with versions that are not published on NuGet.or
+    -->
+    <PackageReference Include="Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime" />
+    <PackageReference Include="Microsoft.VisualStudio.Utilities" />
+    <PackageReference Include="Microsoft.VisualStudio.Interop" />
+    <PackageReference Include="Microsoft.VisualStudio.GraphModel" />
+    <PackageReference Include="Microsoft.VisualStudio.Imaging" />
+    <PackageReference Include="Microsoft.VisualStudio.Shell.15.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Shell.Framework" />
+    <!-- fix issue where Microsoft.VisualStudio.Language.Intellisense depends on StreamJsonRpc version not present in public feeds -->
+    <PackageReference Include="StreamJsonRpc" />
+    <!-- needed for editor composition -->
+    <PackageReference Include="Microsoft.VisualStudio.Platform.VSEditor" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.Internal" />
+    <PackageReference Include="BasicUndo" />
+    <PackageReference Include="Microsoft.VisualStudio.Language" />
+    <!-- upgrade vulnerable transitive dependencies -->
+    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="Microsoft.IO.Redist" />
   </ItemGroup>
 </Project>

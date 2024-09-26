@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net48;net6.0</TargetFrameworks>
+    <TargetFrameworks>net8.0</TargetFrameworks>
+    <!-- conditionally only build net48 on !windows so nunit doesn't try to run them -->
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net48;net8.0</TargetFrameworks>
     <NUnitDisableSupportAssemblies>true</NUnitDisableSupportAssemblies>
     <RootNamespace>MonoDevelop.Xml.Tests</RootNamespace>
   </PropertyGroup>
@@ -25,10 +27,12 @@
     <ProjectReference Include="..\Core\MonoDevelop.Xml.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="NUnit" Version="3.14.0" />
-    <PackageReference Include="NUnit.Analyzers" Version="3.10.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <!-- upgrade vulnerable transitive dependencies -->
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 </Project>
