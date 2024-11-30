@@ -51,6 +51,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 			var xmlPath = XmlElementPath.Resolve (nodePath);
 			if (node != null) {
 				var list = new XmlSchemaCompletionBuilder (this);
+				list.IncludeBracket = includeBracket;
 				var element = FindElement (xmlPath);
 				if (element != null)
 					GetChildElementCompletionData (list, element, "");
