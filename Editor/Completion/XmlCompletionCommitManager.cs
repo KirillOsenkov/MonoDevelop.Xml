@@ -28,7 +28,7 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 	public override IEnumerable<char> PotentialCommitCharacters => allCommitChars;
 
 	static readonly char[] allCommitChars = { '>', '/', '=', ' ', ';', '"', '\'' };
-	static readonly char[] attributeCommitChars = { '=', ' ', '"', '\'' };
+	static readonly char[] attributeCommitChars = { '=', ' ', '"', '\'', '/' };
 	static readonly char[] tagCommitChars = { '>', '/', ' ' };
 	static readonly char[] entityCommitChars = { ';' };
 	static readonly char[] attributeValueCommitChars = { '"', '\'' };
