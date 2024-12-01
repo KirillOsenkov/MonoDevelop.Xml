@@ -17,8 +17,8 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 		static ImageElement CreateElement (int id) => new ImageElement (new ImageId (KnownImagesGuid, id));
 
-		public static readonly ImageElement Element = CreateElement (3245);
-		public static readonly ImageElement Attribute = CreateElement (3335);
+		public static readonly ImageElement Element = CreateElement (KnownImageIds.XMLElement);
+		public static readonly ImageElement Attribute = CreateElement (KnownImageIds.XMLAttribute);
 		public static readonly ImageElement AttributeValue = CreateElement (KnownImageIds.Constant);
 		public static readonly ImageElement Namespace = CreateElement (KnownImageIds.XMLNamespace);
 		public static readonly ImageElement Comment = CreateElement (KnownImageIds.XMLCommentTag);
