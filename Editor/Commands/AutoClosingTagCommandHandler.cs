@@ -5,7 +5,7 @@
 
 using System;
 using System.ComponentModel.Composition;
-
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Commanding;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
@@ -20,6 +20,7 @@ using MonoDevelop.Xml.Editor.Logging;
 using MonoDevelop.Xml.Editor.Options;
 using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Logging;
+using MonoDevelop.Xml.Parser;
 
 namespace MonoDevelop.Xml.Editor.Commands
 {
@@ -58,12 +59,21 @@ namespace MonoDevelop.Xml.Editor.Commands
 			// the completion handler itself, it chains before making its own edits.
 			nextCommandHandler ();
 
-			if (args.TypedChar == '>' && args.TextView.Options.GetAutoInsertClosingTag ()) {
-				try {
+			if (!args.TextView.Options.GetAutoInsertClosingTag()) {
+				return;
+			}
+
+			try {
+				if (args.TypedChar == '>') {
 					InsertCloseTag (args, executionContext);
-				} catch (Exception ex) {
-					loggerFactory.GetLogger<AutoClosingTagCommandHandler> (args.TextView).LogInternalException (ex);
 				}
+
+				if (args.TypedChar == '/') {
+					InsertCloseBracketForSelfClosingTag (args, executionContext);
+				}
+			}
+			catch (Exception ex) {
+				loggerFactory.GetLogger<AutoClosingTagCommandHandler>(args.TextView).LogInternalException(ex);
 			}
 		}
 
@@ -145,6 +155,109 @@ namespace MonoDevelop.Xml.Editor.Commands
 			}
 
 			return;
+		}
+
+		private enum ClosingTagInsertionMode
+		{
+			None,
+			InsertCloseBracketAfterSlash,
+			CompleteClosingTagAfterOpenBracket,
+			InsertEntireClosingTag
+		}
+
+		void InsertCloseBracketForSelfClosingTag(TypeCharCommandArgs args, CommandExecutionContext executionContext)
+		{
+			if (!parserProvider.TryGetParser(args.SubjectBuffer, out var parser))
+			{
+				return;
+			}
+
+			var multiSelectionBroker = args.TextView.GetMultiSelectionBroker();
+			if (multiSelectionBroker.HasMultipleSelections)
+			{
+				return;
+			}
+
+			var position = args.TextView.Caret.Position.BufferPosition;
+			if (position < 2)
+			{
+				return;
+			}
+
+			var slash = (position - 1).GetChar();
+			if (slash != '/')
+			{
+				return;
+			}
+
+			var mode = ClosingTagInsertionMode.InsertEntireClosingTag;
+
+			var spineParser = parser.GetSpineParser(position);
+			var currentState = spineParser.CurrentState;
+			var el = spineParser.Spine.OfType<XElement>().FirstOrDefault();
+			if (el == null || !el.IsNamed || el.IsClosed || el.Name.FullName == null)
+			{
+				return;
+			}
+
+			string name = el.Name.FullName;
+			bool needsSpace = false;
+
+			var previousChar = (position - 2).GetChar();
+			if (previousChar == '<')
+			{
+				mode = ClosingTagInsertionMode.CompleteClosingTagAfterOpenBracket;
+				if (currentState is not XmlClosingTagState)
+				{
+					return;
+				}
+			} else if (!el.IsComplete)
+			{
+				mode = ClosingTagInsertionMode.InsertCloseBracketAfterSlash;
+				if (previousChar == '"' || char.IsLetter(previousChar))
+				{
+					needsSpace = true;
+				}
+			}
+
+			var completionSession = completionBroker.GetSession(args.TextView);
+			if (completionSession != null)
+			{
+				completionSession.Dismiss();
+			}
+
+			int caretOffset = 0;
+
+			using (var bufferEdit = args.SubjectBuffer.CreateEdit())
+			{
+				if (mode == ClosingTagInsertionMode.CompleteClosingTagAfterOpenBracket)
+				{
+					bufferEdit.Insert(position, $"{name}>");
+					caretOffset += name.Length + 1;
+				}
+				else if (mode == ClosingTagInsertionMode.InsertEntireClosingTag)
+				{
+					bufferEdit.Delete(position - 1, 1);
+					bufferEdit.Insert(position, $"</{name}>");
+					caretOffset += name.Length + 2;
+				}
+				else if (mode == ClosingTagInsertionMode.InsertCloseBracketAfterSlash)
+				{
+					if (needsSpace)
+					{
+						bufferEdit.Insert(position - 1, " ");
+						caretOffset++;
+					}
+
+					bufferEdit.Insert(position, $">");
+					caretOffset++;
+				}
+
+				bufferEdit.Apply();
+			}
+
+			ITextSnapshot snapshot = args.SubjectBuffer.CurrentSnapshot;
+			args.TextView.Caret.MoveTo(new SnapshotPoint(snapshot, position + caretOffset));
 		}
 
 		public CommandState GetCommandState (TypeCharCommandArgs args, Func<CommandState> nextCommandHandler)
