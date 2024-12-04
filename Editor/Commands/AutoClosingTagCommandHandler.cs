@@ -49,6 +49,11 @@ namespace MonoDevelop.Xml.Editor.Commands
 
 		public void ExecuteCommand (TypeCharCommandArgs args, Action nextCommandHandler, CommandExecutionContext executionContext)
 		{
+			if (args.TypedChar == '>' && IsAfterClosingBracket(args))
+			{
+				return;
+			}
+
 			// The completion handler both commits the existing selection and re-triggers,
 			// however, it chains to other handlers _before_ it commits, so its undo comes
 			// after them. although that's desirable for character insertion and brace completions
@@ -75,6 +80,22 @@ namespace MonoDevelop.Xml.Editor.Commands
 			catch (Exception ex) {
 				loggerFactory.GetLogger<AutoClosingTagCommandHandler>(args.TextView).LogInternalException(ex);
 			}
+		}
+
+		private bool IsAfterClosingBracket (TypeCharCommandArgs args)
+		{
+			var position = args.TextView.Caret.Position.BufferPosition;
+			if (position < 3)
+			{
+				return false;
+			}
+
+			if ((position - 2).GetChar() == '/' && (position - 1).GetChar() == '>')
+			{
+				return true;
+			}
+
+			return false;
 		}
 
 		void InsertCloseTag (TypeCharCommandArgs args, CommandExecutionContext executionContext)
@@ -184,8 +205,12 @@ namespace MonoDevelop.Xml.Editor.Commands
 				return;
 			}
 
-			var slash = (position - 1).GetChar();
-			if (slash != '/')
+			if (position.GetChar() == '>')
+			{
+				return;
+			}
+
+			if ((position - 1).GetChar() != '/')
 			{
 				return;
 			}
