@@ -24,10 +24,12 @@ namespace MonoDevelop.MSBuild.Editor
 		readonly XmlBackgroundParser parser;
 		readonly JoinableTaskContext joinableTaskContext;
 		readonly ILogger<XmlSyntaxValidationTagger> logger;
+		readonly ITextBuffer buffer;
 		ParseCompletedEventArgs<XmlParseResult>? lastArgs;
 
 		public XmlSyntaxValidationTagger (ITextBuffer buffer, XmlSyntaxValidationTaggerProvider provider)
 		{
+			this.buffer = buffer;
 			parser = provider.ParserProvider.GetParser (buffer);
 			parser.ParseCompleted += ParseCompleted;
 			joinableTaskContext = provider.JoinableTaskContext;
@@ -52,6 +54,20 @@ namespace MonoDevelop.MSBuild.Editor
 			parser.ParseCompleted -= ParseCompleted;
 		}
 
+		private bool hasDiagnostics;
+		public bool HasDiagnostics
+		{
+			get => hasDiagnostics;
+			set {
+				if (hasDiagnostics == value) {
+					return;
+				}
+
+				hasDiagnostics = value;
+				buffer.Properties["HasSyntaxErrors"] = value;
+			}
+		}
+
 		public IEnumerable<ITagSpan<IErrorTag>> GetTags (NormalizedSnapshotSpanCollection spans)
 			=> logger.InvokeAndLogExceptions (() => GetTagsInternal (spans));
 
@@ -60,11 +76,15 @@ namespace MonoDevelop.MSBuild.Editor
 			//this may be assigned from another thread so capture a consistent value
 			var args = lastArgs;
 
-			if (args == null || spans.Count == 0)
+			if (args == null || spans.Count == 0) {
+				HasDiagnostics = false;
 				yield break;
+			}
 
 			var parse = args.ParseResult;
 			var snapshot = args.Snapshot;
+
+			HasDiagnostics = parse.ParseDiagnostics.Count > 0;
 
 			//FIXME is this correct handling of errors that span multiple spans?
 			foreach (var taggingSpan in spans) {
