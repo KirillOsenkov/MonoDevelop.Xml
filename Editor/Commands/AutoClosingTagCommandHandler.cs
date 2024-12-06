@@ -188,30 +188,24 @@ namespace MonoDevelop.Xml.Editor.Commands
 
 		void InsertCloseBracketForSelfClosingTag(TypeCharCommandArgs args, CommandExecutionContext executionContext)
 		{
-			if (!parserProvider.TryGetParser(args.SubjectBuffer, out var parser))
-			{
+			var buffer = args.SubjectBuffer;
+			var view = args.TextView;
+
+			if (!parserProvider.TryGetParser(buffer, out var parser)) {
 				return;
 			}
 
-			var multiSelectionBroker = args.TextView.GetMultiSelectionBroker();
-			if (multiSelectionBroker.HasMultipleSelections)
-			{
+			var multiSelectionBroker = view.GetMultiSelectionBroker();
+			if (multiSelectionBroker.HasMultipleSelections) {
 				return;
 			}
 
-			var position = args.TextView.Caret.Position.BufferPosition;
-			if (position < 2)
-			{
+			var position = view.Caret.Position.BufferPosition;
+			if (position < 2 || position >= position.Snapshot.Length - 1) {
 				return;
 			}
 
-			if (position.GetChar() == '>')
-			{
-				return;
-			}
-
-			if ((position - 1).GetChar() != '/')
-			{
+			if ((position - 1).GetChar() != '/') {
 				return;
 			}
 
@@ -220,8 +214,29 @@ namespace MonoDevelop.Xml.Editor.Commands
 			var spineParser = parser.GetSpineParser(position);
 			var currentState = spineParser.CurrentState;
 			var el = spineParser.Spine.OfType<XElement>().FirstOrDefault();
-			if (el == null || !el.IsNamed || el.IsClosed || el.Name.FullName == null)
-			{
+
+			if (position.GetChar() == '>') {
+				if (currentState is XmlTagState) {
+					char previous = (position - 2).GetChar();
+					if (previous == '"' || char.IsLetter(previous)) {
+						buffer.Insert(position - 1, " ");
+					}
+
+					// if we are followed by the separate closing tag, delete it
+					if (el != null && el.IsNamed && currentState is XmlTagState) {
+						var snapshot = position.Snapshot;
+						string closingTagText = $"></{el.Name.FullName}>";
+						if (snapshot.Length > position + closingTagText.Length &&
+							snapshot.GetText(position, closingTagText.Length) == closingTagText) {
+							buffer.Delete(new Span(position + 1, closingTagText.Length - 1));
+						}
+					}
+				}
+
+				return;
+			}
+
+			if (el == null || !el.IsNamed || el.IsClosed || el.Name.FullName == null) {
 				return;
 			}
 
@@ -229,47 +244,46 @@ namespace MonoDevelop.Xml.Editor.Commands
 			bool needsSpace = false;
 
 			var previousChar = (position - 2).GetChar();
-			if (previousChar == '<')
-			{
+			if (previousChar == '<') {
 				mode = ClosingTagInsertionMode.CompleteClosingTagAfterOpenBracket;
-				if (currentState is not XmlClosingTagState)
-				{
+				if (currentState is not XmlClosingTagState) {
 					return;
 				}
-			} else if (!el.IsComplete)
-			{
+			} else if (!el.IsComplete) {
+				if (currentState is not XmlTagState) {
+					return;
+				}
+
 				mode = ClosingTagInsertionMode.InsertCloseBracketAfterSlash;
-				if (previousChar == '"' || char.IsLetter(previousChar))
-				{
+				if (previousChar == '"' || char.IsLetter(previousChar)) {
 					needsSpace = true;
 				}
 			}
+			else {
+				if (currentState is not XmlTextState) {
+					return;
+				}
+			}
 
-			var completionSession = completionBroker.GetSession(args.TextView);
-			if (completionSession != null)
-			{
+			var completionSession = completionBroker.GetSession(view);
+			if (completionSession != null) {
 				completionSession.Dismiss();
 			}
 
 			int caretOffset = 0;
 
-			using (var bufferEdit = args.SubjectBuffer.CreateEdit())
-			{
-				if (mode == ClosingTagInsertionMode.CompleteClosingTagAfterOpenBracket)
-				{
+			using (var bufferEdit = buffer.CreateEdit()) {
+				if (mode == ClosingTagInsertionMode.CompleteClosingTagAfterOpenBracket) {
 					bufferEdit.Insert(position, $"{name}>");
 					caretOffset += name.Length + 1;
 				}
-				else if (mode == ClosingTagInsertionMode.InsertEntireClosingTag)
-				{
+				else if (mode == ClosingTagInsertionMode.InsertEntireClosingTag) {
 					bufferEdit.Delete(position - 1, 1);
 					bufferEdit.Insert(position, $"</{name}>");
 					caretOffset += name.Length + 2;
 				}
-				else if (mode == ClosingTagInsertionMode.InsertCloseBracketAfterSlash)
-				{
-					if (needsSpace)
-					{
+				else if (mode == ClosingTagInsertionMode.InsertCloseBracketAfterSlash) {
+					if (needsSpace) {
 						bufferEdit.Insert(position - 1, " ");
 						caretOffset++;
 					}
@@ -281,8 +295,7 @@ namespace MonoDevelop.Xml.Editor.Commands
 				bufferEdit.Apply();
 			}
 
-			ITextSnapshot snapshot = args.SubjectBuffer.CurrentSnapshot;
-			args.TextView.Caret.MoveTo(new SnapshotPoint(snapshot, position + caretOffset));
+			view.Caret.MoveTo(new SnapshotPoint(buffer.CurrentSnapshot, position + caretOffset));
 		}
 
 		public CommandState GetCommandState (TypeCharCommandArgs args, Func<CommandState> nextCommandHandler)
