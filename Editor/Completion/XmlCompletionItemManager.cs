@@ -79,12 +79,14 @@ namespace MonoDevelop.Xml.Editor.Completion
 			if (string.IsNullOrWhiteSpace (filterText)) {
 				// There is no text filtering. Just apply user filters, sort alphabetically and return.
 				IEnumerable<CompletionItem> listFiltered = data.InitialSortedItemList;
+				var selectedFilters = data.SelectedFilters.Select(f => f.WithAvailability(isAvailable: true)).ToImmutableArray();
+
 				if (data.SelectedFilters.Any (n => n.IsSelected)) {
-					listFiltered = listFiltered.Where (n => ShouldBeInCompletionList (n, data.SelectedFilters));
+					listFiltered = listFiltered.Where (n => ShouldBeInCompletionList (n, selectedFilters));
 				}
 				var listSorted = listFiltered.OrderBy (n => n.SortText);
 				var listHighlighted = listSorted.Select (n => new CompletionItemWithHighlight (n)).ToImmutableArray ();
-				return new FilteredCompletionModel (listHighlighted, 0, data.SelectedFilters);
+				return new FilteredCompletionModel (listHighlighted, 0, selectedFilters);
 			}
 
 			token.ThrowIfCancellationRequested ();
