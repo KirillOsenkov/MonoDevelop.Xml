@@ -295,7 +295,12 @@ namespace MonoDevelop.Xml.Editor.Commands
 				bufferEdit.Apply();
 			}
 
-			view.Caret.MoveTo(new SnapshotPoint(buffer.CurrentSnapshot, position + caretOffset));
+			var newPosition = new SnapshotPoint(buffer.CurrentSnapshot, position + caretOffset);
+			var topBufferPosition = view.BufferGraph.MapUpToBuffer(newPosition, PointTrackingMode.Positive, PositionAffinity.Successor, view.TextBuffer);
+			if (topBufferPosition.HasValue)
+			{
+				view.Caret.MoveTo(topBufferPosition.Value);
+			}
 		}
 
 		public CommandState GetCommandState (TypeCharCommandArgs args, Func<CommandState> nextCommandHandler)
