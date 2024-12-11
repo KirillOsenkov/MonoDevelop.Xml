@@ -52,6 +52,18 @@ namespace MonoDevelop.Xml.Editor.Parsing
 		{
 			var newVersion = snapshotA.Version;
 			var oldVersion = snapshotB.Version;
+
+			// I've seen one of these being null in a projection scenario??
+			if (newVersion == null)
+			{
+				return 0;
+			}
+
+			if (oldVersion == null)
+			{
+				return 0;
+			}
+
 			if (newVersion.VersionNumber < oldVersion.VersionNumber) {
 				(oldVersion, newVersion) = (newVersion, oldVersion);
 			}
