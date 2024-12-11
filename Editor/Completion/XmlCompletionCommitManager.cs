@@ -15,6 +15,7 @@ using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion.Data;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor.Commanding;
 using Microsoft.VisualStudio.Text.Editor.OptionsExtensionMethods;
+using Microsoft.VisualStudio.Text.Projection;
 using Microsoft.VisualStudio.Threading;
 
 using MonoDevelop.Xml.Dom;
@@ -55,11 +56,11 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 			// allow using / as a commit char for elements as self-closing elements, but special case disallowing it
 			// in the cases where that could conflict with typing the / at the start of a closing tag
 			if (typedChar == '/') {
-				var span = session.ApplicableToSpan.GetSpan (snapshot);
+				var span = session.ApplicableToSpan.GetSpan (session.ApplicableToSpan.TextBuffer.CurrentSnapshot);
 				if (trigger switch {
 					XmlCompletionTrigger.ElementName => span.Length == 0,
 					// XmlCompletionTrigger.ElementValue may have values that are not tags so check the < as well
-					_ => span.Length == 1 && snapshot[span.Start] == '<'
+					_ => span.Length == 1 && span.Start.GetChar() == '<'
 				}) {
 					return false;
 				}
@@ -73,7 +74,20 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 
 	protected override CommitResult TryCommitItemKind (XmlCompletionItemKind itemKind, IAsyncCompletionSession session, ITextBuffer buffer, CompletionItem item, char typedChar, CancellationToken token)
 	{
-		var span = session.ApplicableToSpan.GetSpan (buffer.CurrentSnapshot);
+		var topBufferApplicableToSpan = session.ApplicableToSpan;
+
+		var span = topBufferApplicableToSpan.GetSpan (topBufferApplicableToSpan.TextBuffer.CurrentSnapshot);
+		if (span.Snapshot.TextBuffer is IProjectionBuffer projectionBuffer)
+		{
+			var mappedDown = session.TextView.BufferGraph.MapDownToBuffer(span, SpanTrackingMode.EdgeNegative, buffer);
+			if (mappedDown.Count < 1)
+			{
+				return CommitResult.Unhandled;
+			}
+
+			span = mappedDown[0];
+		}
+
 		bool wasTypedInFull = span.Length == item.InsertText.Length;
 
 		switch (itemKind) {
