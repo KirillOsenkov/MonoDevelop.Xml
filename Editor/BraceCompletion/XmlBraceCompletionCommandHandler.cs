@@ -15,6 +15,7 @@ using Microsoft.VisualStudio.Utilities;
 
 using MonoDevelop.Xml.Dom;
 using MonoDevelop.Xml.Editor.Logging;
+using MonoDevelop.Xml.Editor.Options;
 using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Logging;
 using MonoDevelop.Xml.Parser;
@@ -137,13 +138,11 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 		//HACK: VSMac as of 16.4 doesn't have IBraceCompletionManager in the assembly that the 16.4 nugets
 		// say it's in, so we can't use it even when depending on 16.4. use reflection instead.
 		{
-			if (textView.Properties.TryGetProperty ("BraceCompletionManager", out object manager)) {
-				var prop = braceManagerEnabledProp
-					?? ( braceManagerEnabledProp =
-						manager.GetType ().GetProperty ("Enabled", BF.Instance | BF.NonPublic | BF.Public)
-					);
-				return prop != null && prop.GetValue (manager) is bool b && b;
+			if (!textView.Options.GetAutoInsertAttributeValue())
+			{
+				return false;
 			}
+
 			return true; // default to true if can't find BraceCompletionManager
 		}
 
