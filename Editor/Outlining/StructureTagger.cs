@@ -23,14 +23,28 @@ namespace MonoDevelop.Xml.Editor.Tagging
 	{
 		readonly ITextBuffer buffer;
 		readonly ILogger logger;
-		readonly XmlBackgroundParser parser;
+		private readonly XmlParserProvider xmlParserProvider;
 		static readonly IEnumerable<ITagSpan<IStructureTag>> emptyTagList = Array.Empty<ITagSpan<IStructureTag>> ();
 
 		public StructureTagger (ITextBuffer buffer, ILogger logger, StructureTaggerProvider provider)
 		{
 			this.buffer = buffer;
 			this.logger = logger;
-			parser = provider.ParserProvider.GetParser (buffer);
+			xmlParserProvider = provider.ParserProvider;
+		}
+
+		private XmlBackgroundParser? parser;
+		private XmlBackgroundParser Parser
+		{
+			get
+			{
+				if (parser == null)
+				{
+					parser = xmlParserProvider.GetParser(buffer);
+				}
+
+				return parser;
+			}
 		}
 
 		public event EventHandler<SnapshotSpanEventArgs>? TagsChanged;
@@ -46,7 +60,12 @@ namespace MonoDevelop.Xml.Editor.Tagging
 
 			var snapshot = spans[0].Snapshot;
 
-			var parseTask = parser.GetOrProcessAsync (snapshot, default);
+			if (snapshot.Length > 5_000_000)
+			{
+				return emptyTagList;
+			}
+
+			var parseTask = Parser.GetOrProcessAsync (snapshot, default);
 
 			if (parseTask.IsCompleted) {
 				#pragma warning disable VSTHRD002 // Avoid problematic synchronous waits

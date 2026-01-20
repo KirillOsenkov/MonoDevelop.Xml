@@ -21,19 +21,33 @@ namespace MonoDevelop.MSBuild.Editor
 {
 	class XmlSyntaxValidationTagger : ITagger<IErrorTag>, IDisposable
 	{
-		readonly XmlBackgroundParser parser;
 		readonly JoinableTaskContext joinableTaskContext;
 		readonly ILogger<XmlSyntaxValidationTagger> logger;
 		readonly ITextBuffer buffer;
 		ParseCompletedEventArgs<XmlParseResult>? lastArgs;
+		XmlParserProvider xmlParserProvider;
 
 		public XmlSyntaxValidationTagger (ITextBuffer buffer, XmlSyntaxValidationTaggerProvider provider)
 		{
 			this.buffer = buffer;
-			parser = provider.ParserProvider.GetParser (buffer);
-			parser.ParseCompleted += ParseCompleted;
+			xmlParserProvider = provider.ParserProvider;
 			joinableTaskContext = provider.JoinableTaskContext;
 			logger = provider.LoggerFactory.GetLogger<XmlSyntaxValidationTagger> (buffer);
+		}
+
+		private XmlBackgroundParser? parser;
+		private XmlBackgroundParser Parser
+		{
+			get
+			{
+				if (parser == null)
+				{
+					parser = xmlParserProvider.GetParser(buffer);
+					parser.ParseCompleted += ParseCompleted;
+				}
+
+				return parser;
+			}
 		}
 
 		void ParseCompleted (object? sender, ParseCompletedEventArgs<XmlParseResult> args)
@@ -51,7 +65,10 @@ namespace MonoDevelop.MSBuild.Editor
 
 		public void Dispose ()
 		{
-			parser.ParseCompleted -= ParseCompleted;
+			if (parser != null)
+			{
+				parser.ParseCompleted -= ParseCompleted;
+			}
 		}
 
 		private bool hasDiagnostics;
@@ -73,6 +90,24 @@ namespace MonoDevelop.MSBuild.Editor
 
 		IEnumerable<ITagSpan<IErrorTag>> GetTagsInternal (NormalizedSnapshotSpanCollection spans)
 		{
+			if (spans == null || spans.Count == 0)
+			{
+				yield break;
+			}
+
+			var snapshot = spans[0].Snapshot;
+			if (snapshot.Length > 5_000_000)
+			{
+				HasDiagnostics = false;
+				yield break;
+			}
+
+			if (parser == null)
+			{
+				_ = Parser;
+				yield break;
+			}
+
 			//this may be assigned from another thread so capture a consistent value
 			var args = lastArgs;
 
@@ -81,8 +116,13 @@ namespace MonoDevelop.MSBuild.Editor
 				yield break;
 			}
 
+			if (args.Snapshot != snapshot)
+			{
+				HasDiagnostics = false;
+				yield break;
+			}
+
 			var parse = args.ParseResult;
-			var snapshot = args.Snapshot;
 
 			HasDiagnostics = parse.ParseDiagnostics.Count > 0;
 
