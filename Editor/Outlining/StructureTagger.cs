@@ -47,6 +47,9 @@ namespace MonoDevelop.Xml.Editor.Tagging
 			}
 		}
 
+		XmlParseResult? lastResult;
+		ITextSnapshot? lastResultSnapshot;
+
 		public event EventHandler<SnapshotSpanEventArgs>? TagsChanged;
 
 		public IEnumerable<ITagSpan<IStructureTag>> GetTags (NormalizedSnapshotSpanCollection spans)
@@ -69,12 +72,28 @@ namespace MonoDevelop.Xml.Editor.Tagging
 
 			if (parseTask.IsCompleted) {
 				#pragma warning disable VSTHRD002 // Avoid problematic synchronous waits
-				return GetTags (parseTask.Result, spans, snapshot);
+				lastResult = parseTask.Result;
 				#pragma warning restore VSTHRD002
+				lastResultSnapshot = snapshot;
 			} else {
 				parseTask.ContinueWith (t => {
+					if (t.Status == TaskStatus.RanToCompletion) {
+						lastResult = t.Result;
+						lastResultSnapshot = snapshot;
+					}
 					RaiseTagsChanged ();
 				}, TaskScheduler.Default).LogTaskExceptionsAndForget (logger);
+			}
+
+			// While a parse for a newer snapshot is still running, keep serving the tags from
+			// the last completed parse, translated forward. Returning an empty list here makes
+			// the outlining manager treat all collapsed regions in the queried spans as removed
+			// and expand them.
+			if (lastResult is XmlParseResult result && lastResultSnapshot is ITextSnapshot parsedSnapshot) {
+				var parsedSpans = parsedSnapshot == snapshot
+					? spans
+					: new NormalizedSnapshotSpanCollection (new SnapshotSpan (parsedSnapshot, 0, parsedSnapshot.Length));
+				return GetTags (result, parsedSpans, parsedSnapshot, snapshot);
 			}
 
 			return emptyTagList;
@@ -87,7 +106,7 @@ namespace MonoDevelop.Xml.Editor.Tagging
 			TagsChanged?.Invoke (this, args);
 		}
 
-		private IEnumerable<ITagSpan<IStructureTag>> GetTags (XmlParseResult xmlParseResult, NormalizedSnapshotSpanCollection spans, ITextSnapshot snapshot)
+		private IEnumerable<ITagSpan<IStructureTag>> GetTags (XmlParseResult xmlParseResult, NormalizedSnapshotSpanCollection spans, ITextSnapshot snapshot, ITextSnapshot querySnapshot)
 		{
 			var root = xmlParseResult.XDocument;
 
@@ -134,13 +153,16 @@ namespace MonoDevelop.Xml.Editor.Tagging
 					string firstLine = snapshot.GetText (headerSpan);
 					string collapseForm = firstLine;
 
-					var tagSnapshotSpan = new SnapshotSpan (snapshot, outliningSpan);
+					var tagSnapshotSpan = new SnapshotSpan (snapshot, outliningSpan)
+						.TranslateTo (querySnapshot, SpanTrackingMode.EdgeExclusive);
+					var headerSnapshotSpan = new SnapshotSpan (snapshot, headerSpan)
+						.TranslateTo (querySnapshot, SpanTrackingMode.EdgeExclusive);
 					var structureTag = new StructureTag (
-						snapshot,
-						outliningSpan: outliningSpan,
-						headerSpan: headerSpan,
-						guideLineSpan: outliningSpan,
-						guideLineHorizontalAnchor: outliningSpan.Start,
+						querySnapshot,
+						outliningSpan: tagSnapshotSpan.Span,
+						headerSpan: headerSnapshotSpan.Span,
+						guideLineSpan: tagSnapshotSpan.Span,
+						guideLineHorizontalAnchor: tagSnapshotSpan.Span.Start,
 						type: PredefinedStructureTagTypes.Structural,
 						isCollapsible: true,
 						collapsedForm: collapseForm,
