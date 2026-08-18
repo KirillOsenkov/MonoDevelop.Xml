@@ -16,6 +16,7 @@ using Microsoft.VisualStudio.Utilities;
 using MonoDevelop.Xml.Dom;
 using MonoDevelop.Xml.Editor.Logging;
 using MonoDevelop.Xml.Editor.Options;
+using MonoDevelop.Xml.Editor.Overtype;
 using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Logging;
 using MonoDevelop.Xml.Parser;
@@ -48,7 +49,7 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 	[TextViewRole (PredefinedTextViewRoles.Interactive)]
 	class XmlBraceCompletionCommandHandler : IChainedCommandHandler<TypeCharCommandArgs>
 	{
-		const string Name = nameof (XmlBraceCompletionCommandHandler);
+		public const string Name = nameof (XmlBraceCompletionCommandHandler);
 
 		[ImportingConstructor]
 		public XmlBraceCompletionCommandHandler (XmlParserProvider parserProvider, IEditorLoggerFactory loggerFactory, IAsyncCompletionBroker completionBroker)
@@ -94,7 +95,8 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 				return;
 			}
 
-			// overtype
+			// fallback overtype of the closing quote of an attribute value when no XmlOvertypeSession applies
+			// (e.g. retyping the value of an existing attribute); auto-inserted quotes are handled by XmlOvertypeCommandHandler
 			if (IsQuoteChar(typedChar) && openingPoint > 0 && snapshot.Length > openingPoint && snapshot[openingPoint] == typedChar) {
 				var spine = parser.GetSpineParser (openingPoint, token);
 				if (spine.GetAttributeValueDelimiter () == typedChar) {
@@ -107,10 +109,7 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 						return;
 					}
 
-					if (snapshot[openingPoint - 1] != typedChar) {
-						// in a quoted value typing its quote char over the end quote, and not immediately after start quote
-						view.Caret.MoveTo (new SnapshotPoint (buffer.CurrentSnapshot, openingPoint + 1));
-					}
+					view.Caret.MoveTo (new SnapshotPoint (buffer.CurrentSnapshot, openingPoint + 1));
 					return;
 				}
 			}
@@ -139,6 +138,8 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 					//TODO create an undo transition between the two chars
 					buffer.Insert (openingPoint, doubleQuotes);
 					view.Caret.MoveTo (new SnapshotPoint (buffer.CurrentSnapshot, openingPoint.Position + 1));
+					// both quotes were inserted for the user: the first typed quote is the opening one, the second overtypes the closing one
+					XmlOvertypeSessions.Get (view).Start (new Span (openingPoint.Position, 1), new Span (openingPoint.Position + 1, 1));
 					return;
 				}
 			}

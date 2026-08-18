@@ -18,6 +18,7 @@ using Microsoft.VisualStudio.Utilities;
 using MonoDevelop.Xml.Dom;
 using MonoDevelop.Xml.Editor.Logging;
 using MonoDevelop.Xml.Editor.Options;
+using MonoDevelop.Xml.Editor.Overtype;
 using MonoDevelop.Xml.Editor.Parsing;
 using MonoDevelop.Xml.Logging;
 using MonoDevelop.Xml.Parser;
@@ -49,14 +50,9 @@ namespace MonoDevelop.Xml.Editor.Commands
 
 		public void ExecuteCommand (TypeCharCommandArgs args, Action nextCommandHandler, CommandExecutionContext executionContext)
 		{
-			// swallow characters the user types over text this handler auto-inserted just before the caret
-			// (the > after "/", the "name>" after "</"), so muscle-typing them doesn't duplicate the text.
-			// only the exact remembered characters, in order, at the same caret position and buffer version;
-			// anything else ends the overtype (Helix #2986). only when nothing is selected: with a selection
-			// the typed char replaces the selection (Helix #3299)
-			if (TryConsumeAutoInsertedChar (args)) {
-				return;
-			}
+			// characters the user types over text this handler auto-inserted just before the caret (the > after "/",
+			// the "name>" after "</") are consumed by XmlOvertypeCommandHandler via the XmlOvertypeSession started
+			// at the end of InsertCloseBracketForSelfClosingTag, so muscle-typing them doesn't duplicate the text (Helix #2986)
 
 			// The completion handler both commits the existing selection and re-triggers,
 			// however, it chains to other handlers _before_ it commits, so its undo comes
@@ -66,7 +62,13 @@ namespace MonoDevelop.Xml.Editor.Commands
 			//
 			// Hence this handler comes _before_ the completion handler, but very much like
 			// the completion handler itself, it chains before making its own edits.
+			var versionBefore = args.SubjectBuffer.CurrentSnapshot.Version.VersionNumber;
 			nextCommandHandler ();
+
+			// nothing was typed (e.g. the character was consumed by an XmlOvertypeSession), so nothing to complete
+			if (args.SubjectBuffer.CurrentSnapshot.Version.VersionNumber == versionBefore) {
+				return;
+			}
 
 			try {
 				// indenting a hand-typed closing tag like its start tag is independent of auto-insertion
@@ -89,62 +91,6 @@ namespace MonoDevelop.Xml.Editor.Commands
 			catch (Exception ex) {
 				loggerFactory.GetLogger<AutoClosingTagCommandHandler>(args.TextView).LogInternalException(ex);
 			}
-		}
-
-		// Text this handler inserted immediately before the caret that the user may still be about to type.
-		// Valid only while the buffer is unchanged and the caret hasn't moved; each consumed char shortens Remaining.
-		sealed class AutoInsertedText
-		{
-			public AutoInsertedText (int versionNumber, int caretPosition, string remaining)
-			{
-				VersionNumber = versionNumber;
-				CaretPosition = caretPosition;
-				Remaining = remaining;
-			}
-
-			public int VersionNumber { get; }
-			public int CaretPosition { get; }
-			public string Remaining { get; }
-		}
-
-		static void RememberAutoInsertedText (ITextView view, string text)
-		{
-			view.Properties.RemoveProperty (typeof (AutoInsertedText));
-			if (string.IsNullOrEmpty (text)) {
-				return;
-			}
-
-			var caret = view.Caret.Position.BufferPosition;
-			view.Properties.AddProperty (typeof (AutoInsertedText), new AutoInsertedText (caret.Snapshot.Version.VersionNumber, caret.Position, text));
-		}
-
-		static bool TryConsumeAutoInsertedChar (TypeCharCommandArgs args)
-		{
-			var view = args.TextView;
-			if (!view.Properties.TryGetProperty (typeof (AutoInsertedText), out AutoInsertedText session)) {
-				return false;
-			}
-
-			view.Properties.RemoveProperty (typeof (AutoInsertedText));
-
-			if (!view.Selection.IsEmpty || !view.Options.GetAutoInsertClosingTag ()) {
-				return false;
-			}
-
-			var caret = view.Caret.Position.BufferPosition;
-			if (caret.Snapshot.Version.VersionNumber != session.VersionNumber || caret.Position != session.CaretPosition) {
-				return false;
-			}
-
-			if (session.Remaining[0] != args.TypedChar) {
-				return false;
-			}
-
-			if (session.Remaining.Length > 1) {
-				view.Properties.AddProperty (typeof (AutoInsertedText), new AutoInsertedText (session.VersionNumber, session.CaretPosition, session.Remaining.Substring (1)));
-			}
-
-			return true;
 		}
 
 		void InsertCloseTag (TypeCharCommandArgs args, CommandExecutionContext executionContext)
@@ -276,10 +222,16 @@ namespace MonoDevelop.Xml.Editor.Commands
 					if (el != null && el.IsNamed && currentState is XmlTagState) {
 						var snapshot = position.Snapshot;
 						string closingTagText = $"></{el.Name.FullName}>";
-						if (snapshot.Length > position.Position + closingTagText.Length &&
+						if (snapshot.Length >= position.Position + closingTagText.Length &&
 							snapshot.GetText(position.Position, closingTagText.Length) == closingTagText) {
 							buffer.Delete(new Span(position + 1, closingTagText.Length - 1));
 						}
+					}
+
+					// the > after the caret now closes this self-closing tag; let the user type it over
+					var caretBeforeBracket = view.Caret.Position.BufferPosition;
+					if (caretBeforeBracket.Position < caretBeforeBracket.Snapshot.Length && caretBeforeBracket.GetChar () == '>') {
+						XmlOvertypeSessions.Get (view).Start (new Span (caretBeforeBracket.Position, 0), new Span (caretBeforeBracket.Position, 1));
 					}
 				}
 
@@ -383,7 +335,12 @@ namespace MonoDevelop.Xml.Editor.Commands
 			}
 
 			// what the user would type next if they kept going by hand: ">" after "/", "name>" after "</" or "/"
-			RememberAutoInsertedText (view, mode == ClosingTagInsertionMode.InsertCloseBracketAfterSlash ? ">" : name + ">");
+			string autoInserted = mode == ClosingTagInsertionMode.InsertCloseBracketAfterSlash ? ">" : name + ">";
+			var caretAfterInsert = view.Caret.Position.BufferPosition;
+			if (caretAfterInsert.Position >= autoInserted.Length
+				&& caretAfterInsert.Snapshot.GetText (caretAfterInsert.Position - autoInserted.Length, autoInserted.Length) == autoInserted) {
+				XmlOvertypeSessions.Get (view).StartPrefix (new Span (caretAfterInsert.Position - autoInserted.Length, autoInserted.Length));
+			}
 		}
 
 		// After typing the > of a closing tag ("</name>"), indent that tag like its start tag (Helix #3188)

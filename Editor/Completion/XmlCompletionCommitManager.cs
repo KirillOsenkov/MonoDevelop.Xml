@@ -20,6 +20,7 @@ using Microsoft.VisualStudio.Threading;
 
 using MonoDevelop.Xml.Dom;
 using MonoDevelop.Xml.Editor.Options;
+using MonoDevelop.Xml.Editor.Overtype;
 
 namespace MonoDevelop.Xml.Editor.Completion;
 
@@ -124,6 +125,15 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 				// as VS brace completion only works at the end of the line. now we have a XmlBraceCompletionCommandHandler
 				// that implements custom overtype behaviors, and we can just insert the entire =""
 				ReplaceSpanAndMoveCaret (session, buffer, span, $"{item.InsertText}={quoteChar}{quoteChar}", item.InsertText.Length + 2);
+				// the quotes were inserted for the user: typing the quote consumes the opening one first, then overtypes the
+				// closing one. a quote that committed the item counts as the opening quote already typed.
+				var caret = session.TextView.Caret.Position.BufferPosition;
+				if (caret.Position > 0 && caret.Position < caret.Snapshot.Length && caret.Snapshot[caret.Position - 1] == quoteChar && caret.Snapshot[caret.Position] == quoteChar) {
+					XmlOvertypeSessions.Get (session.TextView).Start (
+						new Span (caret.Position - 1, 1),
+						new Span (caret.Position, 1),
+						consumedPrefixLength: typedChar == quoteChar ? 1 : 0);
+				}
 				//explicitly trigger completion for the attribute value
 				RetriggerCompletion (session.TextView);
 				//if the user typed the quote char we're inserting, swallow it so they don't end up mismatched
