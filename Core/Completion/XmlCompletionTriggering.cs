@@ -44,6 +44,15 @@ namespace MonoDevelop.Xml.Editor.Completion
 				return (XmlCompletionTrigger.ElementName, start, XmlReadForward.XmlName);
 			}
 
+			// explicit invocation in a closing tag, "</|" or "</bla|": the span starts at the < so closing tag items ("</name") match
+			if (isExplicit && context.CurrentState is XmlClosingTagState) {
+				return (XmlCompletionTrigger.Tag, triggerPosition - context.CurrentStateLength - 2, XmlReadForward.None);
+			}
+
+			if (isExplicit && context.CurrentState is XmlNameState && context.CurrentState.Parent is XmlClosingTagState) {
+				return (XmlCompletionTrigger.Tag, triggerPosition - context.CurrentStateLength - 2, XmlReadForward.None);
+			}
+
 			//auto trigger after < in free space
 			if ((isTypedChar || isBackspace) && XmlRootState.MaybeTag (context)) {
 				return (XmlCompletionTrigger.Tag, triggerPosition - 1, XmlReadForward.None);

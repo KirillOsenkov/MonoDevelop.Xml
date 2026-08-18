@@ -97,7 +97,8 @@ namespace MonoDevelop.Xml.Editor.Completion
 			// Without this, the pattern matcher scores an element named "p" as an exact match for "</p"
 			// and it wins over the "</publisher" closing tag item.
 			IEnumerable<CompletionItem> candidates = data.InitialSortedItemList;
-			if (filterText.StartsWith (ClosingTagPrefix, StringComparison.Ordinal)) {
+			bool isClosingTag = filterText.StartsWith (ClosingTagPrefix, StringComparison.Ordinal);
+			if (isClosingTag) {
 				candidates = candidates.Where (item => item.FilterText.StartsWith (ClosingTagPrefix, StringComparison.Ordinal));
 			}
 
@@ -111,7 +112,16 @@ namespace MonoDevelop.Xml.Editor.Completion
 				// Perform pattern matching
 				.Select (completionItem => (completionItem, patternMatcher.TryMatch (completionItem.FilterText)))
 				// Pick only items that were matched, unless length of filter text is 1
-				.Where (n => (filterText.Length == 1 || patternMatcher.HasInvalidPattern || n.Item2.HasValue));
+				.Where (n => (filterText.Length == 1 || patternMatcher.HasInvalidPattern || n.Item2.HasValue))
+				.ToList ();
+
+			// In a closing tag nothing but the open elements is valid, so when the typed name ("</bla") matches none of
+			// them, keep offering all of them (soft-selected) rather than an empty list.
+			bool softSelection = false;
+			if (isClosingTag && matches.Count == 0) {
+				matches = candidates.Select (completionItem => (completionItem, (PatternMatch?)null)).ToList ();
+				softSelection = matches.Count > 0;
+			}
 
 			// See which filters might be enabled based on the typed code
 			var textFilteredFilters = matches.SelectMany (n => n.completionItem.Filters).Distinct ();
@@ -123,7 +133,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 				  n.Filter is CompletionExpander ? true : textFilteredFilters.Contains (n.Filter))));
 
 			// Filter by user-selected filters. The value on availableFiltersWithSelectionState conveys whether the filter is selected.
-			var filterFilteredList = matches;
+			IEnumerable<(CompletionItem completionItem, PatternMatch? patternMatch)> filterFilteredList = matches;
 			if (data.SelectedFilters.Any (n => (n.Filter is CompletionExpander))) {
 				filterFilteredList = matches.Where (n => ShouldBeInExpandedCompletionList (n.completionItem, data.SelectedFilters));
 			}
@@ -174,7 +184,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 				for (int i = 0; i < listWithHighlights.Length; i++) {
 					if (listWithHighlights[i].CompletionItem == bestMatch.completionItem) {
 						selectedItemIndex = i;
-						selectionHint = UpdateSelectionHint.Selected;
+						selectionHint = softSelection ? UpdateSelectionHint.SoftSelected : UpdateSelectionHint.Selected;
 						break;
 					}
 				}
