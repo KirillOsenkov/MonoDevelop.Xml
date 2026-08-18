@@ -151,6 +151,13 @@ namespace MonoDevelop.Xml.Editor.Completion
 				bestMatch = filterFilteredList.OrderByDescending (n => n.Item2.HasValue).ThenBy (n => n.Item2).FirstOrDefault ();
 			}
 
+			// Only an exact or prefix match earns hard selection. A substring/fuzzy best match ("a" in "<![CDATA[",
+			// or the first item when a single typed char matches nothing) stays soft-selected so a commit char
+			// like > types normally instead of committing something the user never meant (Tab still commits).
+			if (!softSelection && bestMatch.completionItem != null && !IsHardSelectionMatch (bestMatch.patternMatch)) {
+				softSelection = true;
+			}
+
 			token.ThrowIfCancellationRequested ();
 
 			var listWithHighlights = filterFilteredList.Select (n => {
@@ -191,6 +198,24 @@ namespace MonoDevelop.Xml.Editor.Completion
 			}
 
 			return new FilteredCompletionModel (listWithHighlights, selectedItemIndex, updatedFilters, selectionHint, centerSelection: true, uniqueItem: null);
+		}
+
+		static bool IsHardSelectionMatch (PatternMatch? patternMatch)
+		{
+			if (!patternMatch.HasValue) {
+				return false;
+			}
+
+			switch (patternMatch.Value.Kind) {
+			case PatternMatchKind.Exact:
+			case PatternMatchKind.Prefix:
+			case PatternMatchKind.CamelCaseExact:
+			case PatternMatchKind.CamelCasePrefix:
+			case PatternMatchKind.CamelCaseNonContiguousPrefix:
+				return true;
+			default:
+				return false;
+			}
 		}
 
 		Task<ImmutableArray<CompletionItem>> IAsyncCompletionItemManager.SortCompletionListAsync (IAsyncCompletionSession session, AsyncCompletionSessionInitialDataSnapshot data, CancellationToken token)
