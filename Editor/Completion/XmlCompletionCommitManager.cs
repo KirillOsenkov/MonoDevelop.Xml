@@ -160,7 +160,8 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 		case XmlCompletionItemKind.MultipleClosingTags:
 		case XmlCompletionItemKind.ClosingTag: {
 				InsertClosingTags (session, buffer, item);
-				return CommitResult.Handled;
+				// the inserted closing tag already ends with >, so a > that committed it must not be typed too
+				return typedChar == '>' ? CommitSwallowChar : CommitResult.Handled;
 			}
 		case XmlCompletionItemKind.Comment: {
 				// this should probably be handled with brace matching and a separate undo step
