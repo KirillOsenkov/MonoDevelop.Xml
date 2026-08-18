@@ -49,13 +49,12 @@ namespace MonoDevelop.Xml.Editor.Commands
 
 		public void ExecuteCommand (TypeCharCommandArgs args, Action nextCommandHandler, CommandExecutionContext executionContext)
 		{
-			// swallow a > typed right after an auto-inserted /> so it doesn't become />>.
-			// only when nothing is selected: with a selection the > replaces the selection (Helix #3299)
-			if (args.TypedChar == '>'
-				&& args.TextView.Selection.IsEmpty
-				&& args.TextView.Options.GetAutoInsertClosingTag()
-				&& IsAfterClosingBracket(args))
-			{
+			// swallow characters the user types over text this handler auto-inserted just before the caret
+			// (the > after "/", the "name>" after "</"), so muscle-typing them doesn't duplicate the text.
+			// only the exact remembered characters, in order, at the same caret position and buffer version;
+			// anything else ends the overtype (Helix #2986). only when nothing is selected: with a selection
+			// the typed char replaces the selection (Helix #3299)
+			if (TryConsumeAutoInsertedChar (args)) {
 				return;
 			}
 
@@ -92,20 +91,60 @@ namespace MonoDevelop.Xml.Editor.Commands
 			}
 		}
 
-		private bool IsAfterClosingBracket (TypeCharCommandArgs args)
+		// Text this handler inserted immediately before the caret that the user may still be about to type.
+		// Valid only while the buffer is unchanged and the caret hasn't moved; each consumed char shortens Remaining.
+		sealed class AutoInsertedText
 		{
-			var position = args.TextView.Caret.Position.BufferPosition;
-			if (position < 3)
+			public AutoInsertedText (int versionNumber, int caretPosition, string remaining)
 			{
+				VersionNumber = versionNumber;
+				CaretPosition = caretPosition;
+				Remaining = remaining;
+			}
+
+			public int VersionNumber { get; }
+			public int CaretPosition { get; }
+			public string Remaining { get; }
+		}
+
+		static void RememberAutoInsertedText (ITextView view, string text)
+		{
+			view.Properties.RemoveProperty (typeof (AutoInsertedText));
+			if (string.IsNullOrEmpty (text)) {
+				return;
+			}
+
+			var caret = view.Caret.Position.BufferPosition;
+			view.Properties.AddProperty (typeof (AutoInsertedText), new AutoInsertedText (caret.Snapshot.Version.VersionNumber, caret.Position, text));
+		}
+
+		static bool TryConsumeAutoInsertedChar (TypeCharCommandArgs args)
+		{
+			var view = args.TextView;
+			if (!view.Properties.TryGetProperty (typeof (AutoInsertedText), out AutoInsertedText session)) {
 				return false;
 			}
 
-			if ((position - 2).GetChar() == '/' && (position - 1).GetChar() == '>')
-			{
-				return true;
+			view.Properties.RemoveProperty (typeof (AutoInsertedText));
+
+			if (!view.Selection.IsEmpty || !view.Options.GetAutoInsertClosingTag ()) {
+				return false;
 			}
 
-			return false;
+			var caret = view.Caret.Position.BufferPosition;
+			if (caret.Snapshot.Version.VersionNumber != session.VersionNumber || caret.Position != session.CaretPosition) {
+				return false;
+			}
+
+			if (session.Remaining[0] != args.TypedChar) {
+				return false;
+			}
+
+			if (session.Remaining.Length > 1) {
+				view.Properties.AddProperty (typeof (AutoInsertedText), new AutoInsertedText (session.VersionNumber, session.CaretPosition, session.Remaining.Substring (1)));
+			}
+
+			return true;
 		}
 
 		void InsertCloseTag (TypeCharCommandArgs args, CommandExecutionContext executionContext)
@@ -272,6 +311,14 @@ namespace MonoDevelop.Xml.Editor.Commands
 					buffer.Delete(new Span(position, 1));
 					return;
 				}
+
+				// "<y>text</|</y>": the closing tag is already right after the caret (typically auto-inserted
+				// when the start tag was typed). Treat the typed </ as overtyping it: drop the existing tag
+				// and complete the typed one, instead of ending up with "</y></y>".
+				string closingTag = "</" + closingTagRest;
+				if (IsFollowedBy(position, closingTag)) {
+					buffer.Delete(new Span(position, closingTag.Length));
+				}
 			} else if (!el.IsComplete) {
 				if (currentState is not XmlTagState) {
 					return;
@@ -334,6 +381,9 @@ namespace MonoDevelop.Xml.Editor.Commands
 			{
 				view.Caret.MoveTo(topBufferPosition.Value);
 			}
+
+			// what the user would type next if they kept going by hand: ">" after "/", "name>" after "</" or "/"
+			RememberAutoInsertedText (view, mode == ClosingTagInsertionMode.InsertCloseBracketAfterSlash ? ">" : name + ">");
 		}
 
 		// After typing the > of a closing tag ("</name>"), indent that tag like its start tag (Helix #3188)
