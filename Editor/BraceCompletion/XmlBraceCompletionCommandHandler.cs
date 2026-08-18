@@ -51,14 +51,16 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 		const string Name = nameof (XmlBraceCompletionCommandHandler);
 
 		[ImportingConstructor]
-		public XmlBraceCompletionCommandHandler (XmlParserProvider parserProvider, IEditorLoggerFactory loggerFactory)
+		public XmlBraceCompletionCommandHandler (XmlParserProvider parserProvider, IEditorLoggerFactory loggerFactory, IAsyncCompletionBroker completionBroker)
 		{
 			this.parserProvider = parserProvider;
 			this.loggerFactory = loggerFactory;
+			this.completionBroker = completionBroker;
 		}
 
 		readonly XmlParserProvider parserProvider;
 		readonly IEditorLoggerFactory loggerFactory;
+		readonly IAsyncCompletionBroker completionBroker;
 
 		// log
 		public string DisplayName => Name;
@@ -96,6 +98,15 @@ namespace MonoDevelop.Xml.Editor.BraceCompletion
 			if (IsQuoteChar(typedChar) && openingPoint > 0 && snapshot.Length > openingPoint && snapshot[openingPoint] == typedChar) {
 				var spine = parser.GetSpineParser (openingPoint, token);
 				if (spine.GetAttributeValueDelimiter () == typedChar) {
+					// the completion command handler runs before us and only commits if the buffer changed after chaining.
+					// if the quote is a commit char for the active session, let it through: completion rolls it back,
+					// commits, and replays the key, which then overtypes the closing quote here (Helix #2938)
+					var completionSession = completionBroker.GetSession (view);
+					if (completionSession != null && !completionSession.IsDismissed && completionSession.ShouldCommit (typedChar, openingPoint, token)) {
+						nextCommandHandler ();
+						return;
+					}
+
 					if (snapshot[openingPoint - 1] != typedChar) {
 						// in a quoted value typing its quote char over the end quote, and not immediately after start quote
 						view.Caret.MoveTo (new SnapshotPoint (buffer.CurrentSnapshot, openingPoint + 1));
