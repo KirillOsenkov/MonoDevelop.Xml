@@ -49,7 +49,12 @@ namespace MonoDevelop.Xml.Editor.Commands
 
 		public void ExecuteCommand (TypeCharCommandArgs args, Action nextCommandHandler, CommandExecutionContext executionContext)
 		{
-			if (args.TypedChar == '>' && IsAfterClosingBracket(args))
+			// swallow a > typed right after an auto-inserted /> so it doesn't become />>.
+			// only when nothing is selected: with a selection the > replaces the selection (Helix #3299)
+			if (args.TypedChar == '>'
+				&& args.TextView.Selection.IsEmpty
+				&& args.TextView.Options.GetAutoInsertClosingTag()
+				&& IsAfterClosingBracket(args))
 			{
 				return;
 			}
@@ -201,7 +206,7 @@ namespace MonoDevelop.Xml.Editor.Commands
 			}
 
 			var position = view.Caret.Position.BufferPosition;
-			if (position < 2 || position >= position.Snapshot.Length - 1) {
+			if (position < 2) {
 				return;
 			}
 
@@ -215,7 +220,8 @@ namespace MonoDevelop.Xml.Editor.Commands
 			var currentState = spineParser.CurrentState;
 			var el = spineParser.Spine.OfType<XElement>().FirstOrDefault();
 
-			if (position.GetChar() == '>') {
+			bool hasCharAtPosition = position < position.Snapshot.Length;
+			if (hasCharAtPosition && position.GetChar() == '>') {
 				if (currentState is XmlTagState) {
 					char previous = (position - 2).GetChar();
 					if (previous == '"' || char.IsLetter(previous)) {
@@ -226,8 +232,8 @@ namespace MonoDevelop.Xml.Editor.Commands
 					if (el != null && el.IsNamed && currentState is XmlTagState) {
 						var snapshot = position.Snapshot;
 						string closingTagText = $"></{el.Name.FullName}>";
-						if (snapshot.Length > position + closingTagText.Length &&
-							snapshot.GetText(position, closingTagText.Length) == closingTagText) {
+						if (snapshot.Length > position.Position + closingTagText.Length &&
+							snapshot.GetText(position.Position, closingTagText.Length) == closingTagText) {
 							buffer.Delete(new Span(position + 1, closingTagText.Length - 1));
 						}
 					}
@@ -249,6 +255,18 @@ namespace MonoDevelop.Xml.Editor.Commands
 				if (currentState is not XmlClosingTagState) {
 					return;
 				}
+
+				// the closing tag may already be there: "</|y>" typed over, or "</|/y>" when the / was typed over an existing one
+				string closingTagRest = $"{name}>";
+				if (IsFollowedBy(position, closingTagRest)) {
+					return;
+				}
+
+				if (IsFollowedBy(position, "/" + closingTagRest)) {
+					// overtype: keep the typed / and drop the existing one so the caret ends up after it
+					buffer.Delete(new Span(position, 1));
+					return;
+				}
 			} else if (!el.IsComplete) {
 				if (currentState is not XmlTagState) {
 					return;
@@ -261,6 +279,15 @@ namespace MonoDevelop.Xml.Editor.Commands
 			}
 			else {
 				if (currentState is not XmlTextState) {
+					return;
+				}
+
+				// the spine parser only knows the text up to the caret; use the last full parse to see whether
+				// this element is already closed further on. still insert when an ancestor is unclosed, as
+				// then the closing tag found by the parser most likely belongs to that ancestor.
+				if (parser.LastOutput?.XDocument.FindAtOffset(el.Span.Start + 1) is XElement parsedElement
+					&& parsedElement.IsClosed
+					&& !HasUnclosedAncestor(parsedElement)) {
 					return;
 				}
 			}
@@ -276,6 +303,7 @@ namespace MonoDevelop.Xml.Editor.Commands
 				if (mode == ClosingTagInsertionMode.CompleteClosingTagAfterOpenBracket) {
 					bufferEdit.Insert(position, $"{name}>");
 					caretOffset += name.Length + 1;
+					caretOffset += AlignClosingTagWithStartTag(bufferEdit, el, position - 2);
 				}
 				else if (mode == ClosingTagInsertionMode.InsertEntireClosingTag) {
 					bufferEdit.Delete(position - 1, 1);
@@ -295,12 +323,61 @@ namespace MonoDevelop.Xml.Editor.Commands
 				bufferEdit.Apply();
 			}
 
-			var newPosition = new SnapshotPoint(buffer.CurrentSnapshot, position + caretOffset);
+			var newPosition = new SnapshotPoint(buffer.CurrentSnapshot, position.Position + caretOffset);
 			var topBufferPosition = view.BufferGraph.MapUpToBuffer(newPosition, PointTrackingMode.Positive, PositionAffinity.Successor, view.TextBuffer);
 			if (topBufferPosition.HasValue)
 			{
 				view.Caret.MoveTo(topBufferPosition.Value);
 			}
+		}
+
+		static bool IsFollowedBy (SnapshotPoint position, string text)
+		{
+			var snapshot = position.Snapshot;
+			return snapshot.Length >= position.Position + text.Length
+				&& snapshot.GetText (position.Position, text.Length) == text;
+		}
+
+		static bool HasUnclosedAncestor (XElement element)
+		{
+			for (var parent = element.Parent; parent != null; parent = parent.Parent) {
+				if (parent is XElement parentElement && !parentElement.IsClosed) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		// When the closing tag is alone on its line, indent it like the line of the start tag.
+		// Returns the change in length before the closing tag so the caller can adjust the caret.
+		static int AlignClosingTagWithStartTag (ITextEdit bufferEdit, XElement el, int closingTagStart)
+		{
+			var snapshot = bufferEdit.Snapshot;
+			var closingTagLine = snapshot.GetLineFromPosition (closingTagStart);
+			var startTagLine = snapshot.GetLineFromPosition (el.Span.Start);
+			if (closingTagLine.LineNumber == startTagLine.LineNumber) {
+				return 0;
+			}
+
+			string closingIndent = snapshot.GetText (closingTagLine.Start, closingTagStart - closingTagLine.Start);
+			if (closingIndent.Trim ().Length > 0) {
+				return 0;
+			}
+
+			string startTagLineText = startTagLine.GetText ();
+			int startIndentLength = 0;
+			while (startIndentLength < startTagLineText.Length && char.IsWhiteSpace (startTagLineText[startIndentLength])) {
+				startIndentLength++;
+			}
+
+			string startIndent = startTagLineText.Substring (0, startIndentLength);
+			if (startIndent == closingIndent) {
+				return 0;
+			}
+
+			bufferEdit.Replace (new Span (closingTagLine.Start, closingIndent.Length), startIndent);
+			return startIndent.Length - closingIndent.Length;
 		}
 
 		public CommandState GetCommandState (TypeCharCommandArgs args, Func<CommandState> nextCommandHandler)

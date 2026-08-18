@@ -57,6 +57,8 @@ namespace MonoDevelop.Xml.Editor.Completion
 		/// </summary>
 		public const string ProviderName = nameof (XmlCompletionItemManager);
 
+		const string ClosingTagPrefix = "</";
+
 		protected IPatternMatcherFactory PatternMatcherFactory;
 		protected ILogger Logger { get; }
 
@@ -91,13 +93,21 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 			token.ThrowIfCancellationRequested ();
 
+			// Once the user has typed "</" they are writing a closing tag, so only closing tag items apply.
+			// Without this, the pattern matcher scores an element named "p" as an exact match for "</p"
+			// and it wins over the "</publisher" closing tag item.
+			IEnumerable<CompletionItem> candidates = data.InitialSortedItemList;
+			if (filterText.StartsWith (ClosingTagPrefix, StringComparison.Ordinal)) {
+				candidates = candidates.Where (item => item.FilterText.StartsWith (ClosingTagPrefix, StringComparison.Ordinal));
+			}
+
 			// Pattern matcher not only filters, but also provides a way to order the results by their match quality.
 			// The relevant CompletionItem is match.Item1, its PatternMatch is match.Item2
 			var patternMatcher = PatternMatcherFactory.CreatePatternMatcher (
 				filterText,
 				new PatternMatcherCreationOptions (System.Globalization.CultureInfo.CurrentCulture, PatternMatcherCreationFlags.IncludeMatchedSpans));
 
-			var matches = data.InitialSortedItemList
+			var matches = candidates
 				// Perform pattern matching
 				.Select (completionItem => (completionItem, patternMatcher.TryMatch (completionItem.FilterText)))
 				// Pick only items that were matched, unless length of filter text is 1
