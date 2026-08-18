@@ -75,6 +75,21 @@ namespace MonoDevelop.Xml.Editor.Completion
 		public static bool TryGetKind (this CompletionItem item, out XmlCompletionItemKind kind)
 			=> item.Properties.TryGetProperty (KindKey, out kind);
 
+		static readonly object RetriggerKey = new ();
+
+		/// <summary>
+		/// Marks the item so that completion is invoked again right after it is committed,
+		/// e.g. a folder in a path so the next segment can be picked immediately.
+		/// </summary>
+		public static CompletionItem AddRetriggerCompletionOnCommit (this CompletionItem item)
+		{
+			item.Properties.AddProperty (RetriggerKey, true);
+			return item;
+		}
+
+		public static bool ShouldRetriggerCompletionOnCommit (this CompletionItem item)
+			=> item.Properties.TryGetProperty (RetriggerKey, out bool retrigger) && retrigger;
+
 		public static Task<object> GetDocumentationAsync (this CompletionItem item, IAsyncCompletionSession session, CancellationToken token)
 		{
 			if (item.Properties.TryGetProperty<ICompletionDocumentationProvider> (DocsKey, out var provider)) {

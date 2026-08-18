@@ -29,11 +29,23 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 {
 	public override IEnumerable<char> PotentialCommitCharacters => allCommitChars;
 
-	static readonly char[] allCommitChars = { '>', '/', '=', ' ', ';', '"', '\'' };
+	static readonly char[] allCommitChars = { '>', '/', '\\', '=', ' ', ';', '"', '\'' };
 	static readonly char[] attributeCommitChars = { '=', ' ', '"', '\'', '/' };
 	static readonly char[] tagCommitChars = { '>', '/', ' ' };
 	static readonly char[] entityCommitChars = { ';' };
 	static readonly char[] attributeValueCommitChars = { '"', '\'' };
+	static readonly char[] pathSeparators = { '/', '\\' };
+
+	/// <summary>
+	/// A completion source completing paths sets this session property to <c>true</c>: typing a path separator then commits
+	/// the selected item (a folder's insert text already ends with the separator, so the typed one is swallowed).
+	/// </summary>
+	public static readonly object CommitOnPathSeparatorKey = new ();
+
+	static bool IsPathSeparator (char c) => Array.IndexOf (pathSeparators, c) > -1;
+
+	static bool CommitsOnPathSeparator (IAsyncCompletionSession session)
+		=> session.Properties.TryGetProperty (CommitOnPathSeparatorKey, out bool commits) && commits;
 
 	static char[] GetCommitChars (XmlCompletionTrigger trigger)
 		=> trigger switch {
@@ -65,6 +77,11 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 				}) {
 					return false;
 				}
+			}
+			goto default;
+		case XmlCompletionTrigger.AttributeValue:
+			if (IsPathSeparator (typedChar) && CommitsOnPathSeparator (session)) {
+				return true;
 			}
 			goto default;
 		default:
@@ -165,6 +182,16 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 			}
 		case XmlCompletionItemKind.AttributeValue: {
 				ReplaceSpan (buffer, span, item.InsertText);
+				if (IsPathSeparator (typedChar) && CommitsOnPathSeparator (session)) {
+					// the typed separator triggers completion for the next segment by itself;
+					// a folder's insert text already ends with a separator, so don't type a second one
+					bool endsWithSeparator = item.InsertText.Length > 0 && IsPathSeparator (item.InsertText[item.InsertText.Length - 1]);
+					return endsWithSeparator ? CommitSwallowChar : CommitResult.Handled;
+				}
+				// e.g. a folder in a path: offer the next segment right away (unless the value was just closed by the typed quote)
+				if (item.ShouldRetriggerCompletionOnCommit () && Array.IndexOf (attributeValueCommitChars, typedChar) < 0) {
+					RetriggerCompletion (session.TextView);
+				}
 				return CommitResult.Handled;
 			}
 		case XmlCompletionItemKind.MultipleClosingTags:
