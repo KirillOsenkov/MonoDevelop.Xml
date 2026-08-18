@@ -84,7 +84,8 @@ public abstract class AbstractCompletionCommitManager<TSessionTriggerKind, TItem
 
 		// If we did participate in the session and we don't consider the typed char to be a commit char for this trigger, cancel the commit.
 		// This prevents lower-priority generic commit manager from committing items with chars that could have matched our items.
-		if (typedChar != '\n' && typedChar != '\t') {
+		// '\0' is an explicit commit with no typed char (Ctrl+Space commit-if-unique, mouse click) and must go through like Enter/Tab.
+		if (typedChar != '\n' && typedChar != '\t' && typedChar != '\0') {
 			// per-item CommitCharacters overrides the default commit chars
 			if (item.CommitCharacters.IsDefaultOrEmpty) {
 				if (!IsCommitCharForTriggerKind (trigger, session, buffer.CurrentSnapshot, typedChar)) {

@@ -158,6 +158,20 @@ namespace MonoDevelop.Xml.Editor.Completion
 				softSelection = true;
 			}
 
+			// Ctrl+Space (commit-if-unique) commits when exactly one item is a hard match, even if fuzzy
+			// matches are still listed — same as C#: "<a" with element "ab" and "<![CDATA[" listed commits ab.
+			// A single exact match is unique too, even next to longer prefix matches ("a" beside "ab").
+			CompletionItem uniqueItem = null;
+			if (!softSelection) {
+				var hardMatches = filterFilteredList.Where (n => IsHardSelectionMatch (n.patternMatch)).ToList ();
+				var exactMatches = hardMatches.Where (n => n.patternMatch.Value.Kind == PatternMatchKind.Exact).ToList ();
+				if (exactMatches.Count == 1) {
+					uniqueItem = exactMatches[0].completionItem;
+				} else if (hardMatches.Count == 1) {
+					uniqueItem = hardMatches[0].completionItem;
+				}
+			}
+
 			token.ThrowIfCancellationRequested ();
 
 			var listWithHighlights = filterFilteredList.Select (n => {
@@ -197,7 +211,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 				}
 			}
 
-			return new FilteredCompletionModel (listWithHighlights, selectedItemIndex, updatedFilters, selectionHint, centerSelection: true, uniqueItem: null);
+			return new FilteredCompletionModel (listWithHighlights, selectedItemIndex, updatedFilters, selectionHint, centerSelection: true, uniqueItem: uniqueItem);
 		}
 
 		static bool IsHardSelectionMatch (PatternMatch? patternMatch)
