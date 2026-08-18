@@ -69,11 +69,16 @@ namespace MonoDevelop.Xml.Editor.Commands
 			// the completion handler itself, it chains before making its own edits.
 			nextCommandHandler ();
 
-			if (!args.TextView.Options.GetAutoInsertClosingTag()) {
-				return;
-			}
-
 			try {
+				// indenting a hand-typed closing tag like its start tag is independent of auto-insertion
+				if (args.TypedChar == '>') {
+					AlignTypedClosingTag (args);
+				}
+
+				if (!args.TextView.Options.GetAutoInsertClosingTag()) {
+					return;
+				}
+
 				if (args.TypedChar == '>') {
 					InsertCloseTag (args, executionContext);
 				}
@@ -328,6 +333,53 @@ namespace MonoDevelop.Xml.Editor.Commands
 			if (topBufferPosition.HasValue)
 			{
 				view.Caret.MoveTo(topBufferPosition.Value);
+			}
+		}
+
+		// After typing the > of a closing tag ("</name>"), indent that tag like its start tag (Helix #3188)
+		void AlignTypedClosingTag (TypeCharCommandArgs args)
+		{
+			var view = args.TextView;
+			var buffer = args.SubjectBuffer;
+
+			if (view.GetMultiSelectionBroker ().HasMultipleSelections) {
+				return;
+			}
+
+			if (!parserProvider.TryGetParser (buffer, out var parser)) {
+				return;
+			}
+
+			var position = view.Caret.Position.BufferPosition;
+			var snapshot = position.Snapshot;
+			int i = position.Position - 1;
+			if (i < 0 || snapshot[i] != '>') {
+				return;
+			}
+
+			int nameEnd = i;
+			i--;
+			while (i >= 0 && XmlChar.IsNameChar (snapshot[i])) {
+				i--;
+			}
+
+			int nameStart = i + 1;
+			if (nameStart == nameEnd || i < 1 || snapshot[i] != '/' || snapshot[i - 1] != '<') {
+				return;
+			}
+
+			int closingTagStart = i - 1;
+			var spineParser = parser.GetSpineParser (new SnapshotPoint (snapshot, nameStart));
+			var el = spineParser.Spine.OfType<XElement> ().FirstOrDefault ();
+			if (el == null || !el.IsNamed || el.Name.FullName != snapshot.GetText (nameStart, nameEnd - nameStart)) {
+				return;
+			}
+
+			using var bufferEdit = buffer.CreateEdit ();
+			if (AlignClosingTagWithStartTag (bufferEdit, el, closingTagStart) != 0) {
+				bufferEdit.Apply ();
+			} else {
+				bufferEdit.Cancel ();
 			}
 		}
 
