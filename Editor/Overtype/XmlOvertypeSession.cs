@@ -19,7 +19,8 @@ namespace MonoDevelop.Xml.Editor.Overtype
 	/// the <c>&gt;</c> inserted after <c>/</c> (prefix only), the <c>name&gt;</c> inserted after <c>&lt;/</c> (prefix only).
 	/// The session ends when the caret leaves the region between the end of the prefix and the end of the suffix,
 	/// when either text changes, or when everything has been consumed. Typing any character that is neither
-	/// consumed nor overtyped makes the prefix permanent; the suffix stays overtypeable.
+	/// consumed nor overtyped makes the prefix permanent, as does any text that ends up between the prefix and
+	/// the suffix by other means (a completion commit, a paste); the suffix stays overtypeable.
 	/// Same rules as the VS editor's own brace-completion overtype session, minus the requirement that the
 	/// prefix and suffix be identical for the prefix to be consumable.
 	/// </summary>
@@ -81,6 +82,12 @@ namespace MonoDevelop.Xml.Editor.Overtype
 			var suffix = Suffix.GetSpan (snapshot);
 			if (snapshot.GetText (prefix) != prefixText || snapshot.GetText (suffix) != suffixText) {
 				return false;
+			}
+
+			// anything inserted between the prefix and the suffix (e.g. a completion commit)
+			// means the prefix can no longer be typed by hand: it becomes permanent
+			if (canConsumePrefix && prefix.End != suffix.Start) {
+				canConsumePrefix = false;
 			}
 
 			if (suffix.Length == 0) {
