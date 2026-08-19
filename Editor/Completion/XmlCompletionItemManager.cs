@@ -78,6 +78,18 @@ namespace MonoDevelop.Xml.Editor.Completion
 		{
 			// Filter by text
 			var filterText = session.ApplicableToSpan.GetText (data.Snapshot);
+
+			// Tag / declaration / entity sessions have their trigger punctuation ("<", "<!", "&") inside the span.
+			// Once a deletion removes it the session is stale: the caret sits at the start of an empty span, which the
+			// editor treats as "keep open, soft-selected", so the next "<" would update this session instead of
+			// starting a fresh one (and other exclusive sources, e.g. the XAML language service, never get asked).
+			if (filterText.Length == 0
+				&& data.Trigger.Reason is CompletionTriggerReason.Backspace or CompletionTriggerReason.Deletion
+				&& session.Properties.TryGetProperty (typeof (XmlCompletionTrigger), out XmlCompletionTrigger triggerKind)
+				&& triggerKind is XmlCompletionTrigger.Tag or XmlCompletionTrigger.DeclarationOrCDataOrComment or XmlCompletionTrigger.Entity) {
+				return null;
+			}
+
 			if (string.IsNullOrWhiteSpace (filterText)) {
 				// There is no text filtering. Just apply user filters, sort alphabetically and return.
 				IEnumerable<CompletionItem> listFiltered = data.InitialSortedItemList;
@@ -104,13 +116,14 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 			// Pattern matcher not only filters, but also provides a way to order the results by their match quality.
 			// The relevant CompletionItem is match.Item1, its PatternMatch is match.Item2
+			// '.' is an ordinary XML name character but a container separator for the pattern matcher, see NormalizeNameChars.
 			var patternMatcher = PatternMatcherFactory.CreatePatternMatcher (
-				filterText,
+				NormalizeNameChars (filterText),
 				new PatternMatcherCreationOptions (System.Globalization.CultureInfo.CurrentCulture, PatternMatcherCreationFlags.IncludeMatchedSpans));
 
 			var matches = candidates
 				// Perform pattern matching
-				.Select (completionItem => (completionItem, patternMatcher.TryMatch (completionItem.FilterText)))
+				.Select (completionItem => (completionItem, patternMatcher.TryMatch (NormalizeNameChars (completionItem.FilterText))))
 				// Pick only items that were matched, unless length of filter text is 1
 				.Where (n => (filterText.Length == 1 || patternMatcher.HasInvalidPattern || n.Item2.HasValue))
 				.ToList ();
@@ -182,7 +195,7 @@ namespace MonoDevelop.Xml.Editor.Completion
 					}
 				} else {
 					// Matches were made against FilterText. We are displaying DisplayText. To avoid issues, re-apply matches for these items
-					var newMatchedSpans = patternMatcher.TryMatch (n.completionItem.DisplayText);
+					var newMatchedSpans = patternMatcher.TryMatch (NormalizeNameChars (n.completionItem.DisplayText));
 					if (newMatchedSpans.HasValue) {
 						safeMatchedSpans = newMatchedSpans.Value.MatchedSpans;
 					}
@@ -213,6 +226,16 @@ namespace MonoDevelop.Xml.Editor.Completion
 
 			return new FilteredCompletionModel (listWithHighlights, selectedItemIndex, updatedFilters, selectionHint, centerSelection: true, uniqueItem: uniqueItem);
 		}
+
+		// The pattern matcher splits "A.B" into container "A" and name "B" and matches candidates against "B" only,
+		// so "Menu." matches every "Menu*" item. In XML a dot is just part of the name ("Menu.Items"), so it is
+		// replaced on both sides by U+01C0, a letter that is neither upper nor lower case: it neither breaks
+		// words nor starts a camel hump ("Menu.Items" typed as "MI" still matches), and being the same length
+		// the matched spans stay valid for the original text. ':' and '-' are left alone: treating them as word
+		// breaks is what we want there ("<xs:" keeps offering all xs:* items).
+		const char DotPlaceholder = 'ǀ';
+
+		static string NormalizeNameChars (string text) => text.IndexOf ('.') < 0 ? text : text.Replace ('.', DotPlaceholder);
 
 		static bool IsHardSelectionMatch (PatternMatch? patternMatch)
 		{
