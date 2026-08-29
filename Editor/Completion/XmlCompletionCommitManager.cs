@@ -134,6 +134,19 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 					return CommitResult.Handled;
 				}
 
+				// the attribute already has a value ("Vertical|=\"2\"" - completing or fixing the casing of an
+				// existing name): replace just the name, appending ="" would yield name=""="value"
+				var nameSnapshot = span.Snapshot;
+				int followingCharPosition = span.End;
+				while (followingCharPosition < nameSnapshot.Length && char.IsWhiteSpace (nameSnapshot[followingCharPosition])) {
+					followingCharPosition++;
+				}
+
+				if (followingCharPosition < nameSnapshot.Length && nameSnapshot[followingCharPosition] == '=') {
+					ReplaceSpanAndMoveCaret (session, buffer, span, item.InsertText, item.InsertText.Length);
+					return CommitResult.Handled;
+				}
+
 				//FIXME get this from options
 				char quoteChar = typedChar == '\'' ? '\'' : '"';
 
