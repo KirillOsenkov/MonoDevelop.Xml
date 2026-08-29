@@ -21,6 +21,7 @@ using Microsoft.VisualStudio.Threading;
 using MonoDevelop.Xml.Dom;
 using MonoDevelop.Xml.Editor.Options;
 using MonoDevelop.Xml.Editor.Overtype;
+using MonoDevelop.Xml.Parser;
 
 namespace MonoDevelop.Xml.Editor.Completion;
 
@@ -128,6 +129,13 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 				return CommitResult.Handled;
 			}
 		case XmlCompletionItemKind.Attribute: {
+				// when the caret is mid-name ("Vert|ical"), the span only reaches the caret;
+				// consume the rest of the name so the commit replaces the whole name
+				var nameSnapshot = span.Snapshot;
+				while (span.End < nameSnapshot.Length && XmlChar.IsNameChar (nameSnapshot[span.End])) {
+					span = new SnapshotSpan (nameSnapshot, span.Start, span.Length + 1);
+				}
+
 				// simple handling if it might interfere with typing or auto attributes are disabled
 				if (typedChar == '=' || typedChar == ' ' || !session.TextView.Options.GetAutoInsertAttributeValue ()) {
 					ReplaceSpan (buffer, span, item.InsertText);
@@ -136,7 +144,6 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 
 				// the attribute already has a value ("Vertical|=\"2\"" - completing or fixing the casing of an
 				// existing name): replace just the name, appending ="" would yield name=""="value"
-				var nameSnapshot = span.Snapshot;
 				int followingCharPosition = span.End;
 				while (followingCharPosition < nameSnapshot.Length && char.IsWhiteSpace (nameSnapshot[followingCharPosition])) {
 					followingCharPosition++;
