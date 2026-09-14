@@ -130,10 +130,20 @@ class XmlCompletionCommitManager (ILogger logger, JoinableTaskContext joinableTa
 			}
 		case XmlCompletionItemKind.Attribute: {
 				// when the caret is mid-name ("Vert|ical"), the span only reaches the caret;
-				// consume the rest of the name so the commit replaces the whole name
+				// consume the rest of the name so the commit replaces the whole name - but only when the
+				// whole word is a prefix of the item, otherwise unrelated text right after the caret
+				// ("Type|IMAGE_FILE_HEADER") would be deleted by the commit
 				var nameSnapshot = span.Snapshot;
-				while (span.End < nameSnapshot.Length && XmlChar.IsNameChar (nameSnapshot[span.End])) {
-					span = new SnapshotSpan (nameSnapshot, span.Start, span.Length + 1);
+				int nameEnd = span.End;
+				while (nameEnd < nameSnapshot.Length && XmlChar.IsNameChar (nameSnapshot[nameEnd])) {
+					nameEnd++;
+				}
+
+				if (nameEnd > span.End) {
+					var wholeName = nameSnapshot.GetText (span.Start, nameEnd - span.Start);
+					if (item.InsertText.StartsWith (wholeName, StringComparison.OrdinalIgnoreCase)) {
+						span = new SnapshotSpan (nameSnapshot, span.Start, nameEnd - span.Start);
+					}
 				}
 
 				// simple handling if it might interfere with typing or auto attributes are disabled
