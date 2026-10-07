@@ -38,6 +38,7 @@ namespace MonoDevelop.Xml.Parser
 		const int NOMATCH = 0;
 		const int SINGLE_DASH = 1;
 		const int DOUBLE_DASH = 2;
+		const int DOUBLE_DASH_REPORTED = 3;
 		
 		public override XmlParserState? PushChar (char c, XmlParserContext context, ref bool replayCharacter, bool isEndOfFile)
 		{
@@ -50,13 +51,23 @@ namespace MonoDevelop.Xml.Parser
 				return EndAndPop ();
 			}
 
+			XmlTextValidator.ValidateCharacter (context, c);
+
 			if (c == '-') {
 				//make sure we know when there are two '-' chars together
 				if (context.StateTag == NOMATCH)
 					context.StateTag = SINGLE_DASH;
-				else
+				else if (context.StateTag == SINGLE_DASH)
 					context.StateTag = DOUBLE_DASH;
-				
+				else if (context.StateTag == DOUBLE_DASH) {
+					context.Diagnostics?.Add (XmlCoreDiagnostics.IncompleteEndComment, new TextSpan (context.Position, 1));
+					context.StateTag = DOUBLE_DASH_REPORTED;
+				}
+			} else if (context.StateTag == DOUBLE_DASH_REPORTED) {
+				if (c == '>') {
+					return EndAndPop ();
+				}
+				context.StateTag = NOMATCH;
 			} else if (context.StateTag == DOUBLE_DASH) {
 				if (c == '>') {
 					// if the '--' is followed by a '>', the state has ended

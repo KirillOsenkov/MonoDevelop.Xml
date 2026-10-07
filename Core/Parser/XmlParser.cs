@@ -143,6 +143,10 @@ namespace MonoDevelop.Xml.Parser
 			}
 			doc.End (Context.PositionBeforeCurrentChar);
 
+			if (Context.BuildTree && Context.Diagnostics is not null) {
+				ValidateDocumentLevelNodes (doc, Context.Diagnostics);
+			}
+
 			for (int i = nodes.Length - 1; i >= 0; i--) {
 				var node = nodes[i];
 				if (!node.IsEnded) {
@@ -156,6 +160,48 @@ namespace MonoDevelop.Xml.Parser
 			}
 
 			return (doc, Context.Diagnostics);
+		}
+
+		static void ValidateDocumentLevelNodes (XDocument doc, List<XmlDiagnostic> diagnostics)
+		{
+			bool seenRootElement = false;
+			bool seenDocType = false;
+
+			foreach (var node in doc.Nodes) {
+				switch (node) {
+				case XElement element:
+					if (seenRootElement) {
+						var span = element.IsNamed ? element.NameSpan : element.Span;
+						diagnostics.Add (XmlCoreDiagnostics.MultipleRootElements, span);
+					}
+					seenRootElement = true;
+					break;
+				case XText text:
+					if (!FollowsError (text.Span.Start)) {
+						diagnostics.Add (XmlCoreDiagnostics.TextOutsideRootElement, text.Span);
+					}
+					break;
+				case XCData cdata:
+					diagnostics.Add (XmlCoreDiagnostics.CDataOutsideRootElement, cdata.Span);
+					break;
+				case XDocType docType:
+					if (seenRootElement || seenDocType) {
+						diagnostics.Add (XmlCoreDiagnostics.MisplacedDocType, docType.Span);
+					}
+					seenDocType = true;
+					break;
+				}
+			}
+
+			bool FollowsError (int position)
+			{
+				foreach (var diagnostic in diagnostics) {
+					if (diagnostic.Span.Start < position && diagnostic.Span.End >= position - 1) {
+						return true;
+					}
+				}
+				return false;
+			}
 		}
 
 		public override string ToString () => Context.ToString ();

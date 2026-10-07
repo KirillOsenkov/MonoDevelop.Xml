@@ -209,7 +209,7 @@ namespace MonoDevelop.Xml.Tests.Parser
 			var parser = new XmlTreeParser (CreateRootState ());
 			var result = parser.Parse (@"<doc><a></ a></doc >");
 
-			result.AssertNoDiagnostics ();
+			result.AssertDiagnostics ((XmlCoreDiagnostics.WhitespaceBeforeClosingTagName, 10, 1));
 		}
 
 

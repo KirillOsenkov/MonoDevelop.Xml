@@ -84,6 +84,7 @@ namespace MonoDevelop.Xml.Parser
 			if ((c == '"' && maskedTag == DOUBLEQUOTE) || c == '\'' && maskedTag == SINGLEQUOTE) {
 				//ending the value
 				var att = (XAttribute) context.Nodes.Peek ();
+				XmlTextValidator.ValidateAttributeValue (context, context.KeywordBuilder, context.Position - context.KeywordBuilder.Length);
 				att.SetValue (context.Position - context.KeywordBuilder.Length, context.KeywordBuilder.ToString ());
 				return Parent;
 			}

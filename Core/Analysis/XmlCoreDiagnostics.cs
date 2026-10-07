@@ -90,7 +90,7 @@ namespace MonoDevelop.Xml.Analysis
 		);
 
 		public static XmlDiagnosticDescriptor MalformedNamedSelfClosingTag = new (
-			nameof (MalformedSelfClosingTag),
+			nameof (MalformedNamedSelfClosingTag),
 			"Malformed tag",
 			"Self-closing tag '{0}' is malformed due to unexpected character '{1}' after the forward slash.",
 			XmlDiagnosticSeverity.Error
@@ -195,6 +195,97 @@ namespace MonoDevelop.Xml.Analysis
 			nameof (IncompleteProcessingInstructionEof),
 			"Incomplete processing instruction",
 			"Incomplete processing instruction due to unexpected end of file",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor UnescapedAmpersand = new (
+			nameof (UnescapedAmpersand),
+			"Unescaped '&'",
+			"The '&' character must be escaped as '&amp;' when it does not start an entity or character reference.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor IncompleteEntityReference = new (
+			nameof (IncompleteEntityReference),
+			"Incomplete entity reference",
+			"The reference '{0}' is missing the terminating ';'.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor InvalidCharacterReference = new (
+			nameof (InvalidCharacterReference),
+			"Invalid character reference",
+			"'{0}' is not a valid reference to a character allowed in XML.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor UndeclaredEntity = new (
+			nameof (UndeclaredEntity),
+			"Undeclared entity",
+			"Reference to undeclared entity '{0}'. Only &amp; &lt; &gt; &quot; and &apos; are predefined.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor InvalidCharacter = new (
+			nameof (InvalidCharacter),
+			"Invalid character",
+			"The character U+{0:X4} is not allowed in XML.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor CDataEndInText = new (
+			nameof (CDataEndInText),
+			"Unescaped ']]>'",
+			"The sequence ']]>' is not allowed in text. Escape the '>' as '&gt;'.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor MissingWhitespaceBetweenAttributes = new (
+			nameof (MissingWhitespaceBetweenAttributes),
+			"Missing whitespace",
+			"Attributes must be separated by whitespace.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor WhitespaceBeforeClosingTagName = new (
+			nameof (WhitespaceBeforeClosingTagName),
+			"Malformed closing tag",
+			"Whitespace is not allowed between '</' and the tag name.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor MisplacedXmlDeclaration = new (
+			nameof (MisplacedXmlDeclaration),
+			"Misplaced XML declaration",
+			"The XML declaration must be at the very start of the document, with nothing before it, not even whitespace.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor MisplacedDocType = new (
+			nameof (MisplacedDocType),
+			"Misplaced DOCTYPE",
+			"A document can have only one DOCTYPE declaration, and it must appear before the root element.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor MultipleRootElements = new (
+			nameof (MultipleRootElements),
+			"Multiple root elements",
+			"The document has more than one root element, so it is only valid as an XML fragment.",
+			XmlDiagnosticSeverity.Warning
+		);
+
+		public static XmlDiagnosticDescriptor TextOutsideRootElement = new (
+			nameof (TextOutsideRootElement),
+			"Text outside root element",
+			"Text is not allowed outside the root element.",
+			XmlDiagnosticSeverity.Error
+		);
+
+		public static XmlDiagnosticDescriptor CDataOutsideRootElement = new (
+			nameof (CDataOutsideRootElement),
+			"CDATA outside root element",
+			"CDATA sections are not allowed outside the root element.",
 			XmlDiagnosticSeverity.Error
 		);
 	}

@@ -37,6 +37,12 @@ namespace MonoDevelop.Xml.Parser
 	{
 		const int STARTOFFSET = 9; // "<!DOCTYPE";
 
+		const int INTERNAL_SUBSET = 100;
+		const int INTERNAL_SUBSET_MARKUP = 101;
+		const int INTERNAL_SUBSET_DOUBLE_QUOTED = 102;
+		const int INTERNAL_SUBSET_SINGLE_QUOTED = 103;
+		const int AFTER_INTERNAL_SUBSET = 104;
+
 		readonly XmlNameState nameState;
 
 		public XmlDocTypeState ()
@@ -54,6 +60,41 @@ namespace MonoDevelop.Xml.Parser
 
 			if (isEndOfFile) {
 				// skip to ending the node
+			} else if (context.StateTag >= INTERNAL_SUBSET) {
+				switch (context.StateTag) {
+				case INTERNAL_SUBSET:
+					if (c == '<') {
+						context.StateTag = INTERNAL_SUBSET_MARKUP;
+					} else if (c == ']') {
+						doc.InternalDeclarationRegion = TextSpan.FromBounds (doc.InternalDeclarationRegion.Start, context.Position);
+						context.StateTag = AFTER_INTERNAL_SUBSET;
+					}
+					return null;
+				case INTERNAL_SUBSET_MARKUP:
+					if (c == '"') {
+						context.StateTag = INTERNAL_SUBSET_DOUBLE_QUOTED;
+					} else if (c == '\'') {
+						context.StateTag = INTERNAL_SUBSET_SINGLE_QUOTED;
+					} else if (c == '>') {
+						context.StateTag = INTERNAL_SUBSET;
+					}
+					return null;
+				case INTERNAL_SUBSET_DOUBLE_QUOTED:
+					if (c == '"') {
+						context.StateTag = INTERNAL_SUBSET_MARKUP;
+					}
+					return null;
+				case INTERNAL_SUBSET_SINGLE_QUOTED:
+					if (c == '\'') {
+						context.StateTag = INTERNAL_SUBSET_MARKUP;
+					}
+					return null;
+				case AFTER_INTERNAL_SUBSET:
+					if (XmlChar.IsWhitespace (c)) {
+						return null;
+					}
+					break;
+				}
 			} else if (!doc.RootElement.IsValid) {
 				if (XmlChar.IsWhitespace (c))
 					return null;
@@ -69,6 +110,9 @@ namespace MonoDevelop.Xml.Parser
 						return null;
 					} else if (c == 'p' || c == 'P') {
 						context.StateTag = -1;
+						return null;
+					} else if (c == '[') {
+						EnterInternalSubset ();
 						return null;
 					} if (XmlChar.IsWhitespace (c)) {
 						return null;
@@ -94,12 +138,12 @@ namespace MonoDevelop.Xml.Parser
 					if (context.KeywordBuilder.Length == 0) {
 						if (XmlChar.IsWhitespace (c))
 							return null;
-						else if (c == '"') {
+						else if (c == '"' || c == '\'') {
 							context.KeywordBuilder.Append (c);
 							return null;
 						}
 					} else {
-						if (c == '"') {
+						if (c == context.KeywordBuilder[0]) {
 							context.KeywordBuilder.Remove (0,1);
 							doc.PublicFpi = context.KeywordBuilder.ToString ();
 							context.KeywordBuilder.Length = 0;
@@ -115,12 +159,12 @@ namespace MonoDevelop.Xml.Parser
 				if (context.KeywordBuilder.Length == 0) {
 					if (XmlChar.IsWhitespace (c))
 						return null;
-					else if (c == '"') {
+					else if (c == '"' || c == '\'') {
 						context.KeywordBuilder.Append (c);
 						return null;
 					}
 				} else {
-					if (c == '"') {
+					if (c == context.KeywordBuilder[0]) {
 						context.KeywordBuilder.Remove (0,1);
 						doc.Uri = context.KeywordBuilder.ToString ();
 						context.KeywordBuilder.Length = 0;
@@ -130,34 +174,12 @@ namespace MonoDevelop.Xml.Parser
 					return null;
 				}
 			}
-			else if (doc.InternalDeclarationRegion.Length == 0) {
+			else {
 				if (XmlChar.IsWhitespace (c))
-						return null;
-				switch (context.StateTag) {
-				case 0:
-					if (c == '[') {
-						doc.InternalDeclarationRegion = new TextSpan (context.Position + 1, 0);
-						context.StateTag = 1;
-						return null;
-					}
-					break;
-				case 1:
-					if (c == '<') {
-						context.StateTag = 2;
-						return null;
-					} else if (c == ']') {
-						context.StateTag = 0;
-						doc.InternalDeclarationRegion = TextSpan.FromBounds (doc.InternalDeclarationRegion.Start, context.Position);
-						return null;
-					}
-					break;
-				case 2:
-					if (c == '>') {
-						context.StateTag = 1;
-					}
 					return null;
-				default:
-					throw new InvalidOperationException ();
+				if (c == '[') {
+					EnterInternalSubset ();
+					return null;
 				}
 			}
 
@@ -178,6 +200,12 @@ namespace MonoDevelop.Xml.Parser
 				((XContainer) context.Nodes.Peek ()).AddChildNode (doc);
 			}
 			return Parent;
+
+			void EnterInternalSubset ()
+			{
+				doc.InternalDeclarationRegion = new TextSpan (context.Position + 1, 0);
+				context.StateTag = INTERNAL_SUBSET;
+			}
 		}
 
 		public override XmlParserContext? TryRecreateState (ref XObject xobject, int position)

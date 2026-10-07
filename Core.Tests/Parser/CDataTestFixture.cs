@@ -41,7 +41,7 @@ namespace MonoDevelop.Xml.Tests.Parser
 
 			parser.AssertDiagnostics (
 				(XmlCoreDiagnostics.IncompleteCDataEof, startOffset, 0),
-				(XmlCoreDiagnostics.IncompleteTagEof, startOffset, 0)
+				(XmlCoreDiagnostics.UnclosedTag, 0, 3)
 				);
 		}
 	}

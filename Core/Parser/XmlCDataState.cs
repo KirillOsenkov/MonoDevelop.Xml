@@ -50,6 +50,8 @@ namespace MonoDevelop.Xml.Parser
 				return EndAndPop ();
 			}
 
+			XmlTextValidator.ValidateCharacter (context, c);
+
 			if (c == ']') {
 				//make sure we know when there are two ']' chars together
 				if (context.StateTag == NOMATCH)

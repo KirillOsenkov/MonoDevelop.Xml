@@ -45,6 +45,9 @@ namespace MonoDevelop.Xml.Parser
 
 			if (isEndOfFile) {
 				context.Diagnostics?.Add (XmlCoreDiagnostics.IncompleteProcessingInstructionEof, context.PositionAfterCurrentChar);
+			} else if (context.Diagnostics is not null) {
+				XmlTextValidator.ValidateCharacter (context, c);
+				CheckXmlDeclarationPosition (c, context);
 			}
 
 			if (c == '?') {
@@ -70,6 +73,29 @@ namespace MonoDevelop.Xml.Parser
 			}
 			
 			return null;
+		}
+
+		static void CheckXmlDeclarationPosition (char c, XmlParserContext context)
+		{
+			const int targetLength = 3;
+
+			if (context.CurrentStateLength < 1 || context.CurrentStateLength > targetLength + 1) {
+				return;
+			}
+
+			if (context.CurrentStateLength <= targetLength) {
+				context.KeywordBuilder.Append (c);
+				return;
+			}
+
+			if (context.KeywordBuilder.ToString () != "xml" || !(XmlChar.IsWhitespace (c) || c == '?')) {
+				return;
+			}
+
+			int start = context.Position - targetLength - STARTOFFSET;
+			if (start != 0) {
+				context.Diagnostics?.Add (XmlCoreDiagnostics.MisplacedXmlDeclaration, new TextSpan (start, targetLength + STARTOFFSET));
+			}
 		}
 
 		public override XmlParserContext? TryRecreateState (ref XObject xobject, int position)

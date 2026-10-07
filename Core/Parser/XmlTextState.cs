@@ -35,6 +35,8 @@ namespace MonoDevelop.Xml.Parser
 			{
 				var node = (XText)context.Nodes.Pop ();
 
+				XmlTextValidator.ValidateText (context, context.KeywordBuilder, node.Span.Start);
+
 				//trim the text down to the last non-whitespace char and add it
 				var length = context.StateTag - node.Span.Start + 1;
 				context.KeywordBuilder.Length = length;

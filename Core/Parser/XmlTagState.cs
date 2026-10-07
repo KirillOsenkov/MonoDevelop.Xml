@@ -41,7 +41,8 @@ namespace MonoDevelop.Xml.Parser
 
 		const int ATTEMPT_RECOVERY = 1;
 		const int RECOVERY_FOUND_WHITESPACE = 2;
-		const int MAYBE_SELF_CLOSING = 2;
+		const int MAYBE_SELF_CLOSING = 3;
+		const int MALFORMED_SELF_CLOSING = 4;
 		const int FREE = 0;
 
 		readonly XmlAttributeState AttributeState;
@@ -85,7 +86,10 @@ namespace MonoDevelop.Xml.Parser
 				if (!element.IsEnded) {
 					element.End (context.PositionBeforeCurrentChar);
 				}
-				if (isEndOfFile) {
+				if (isEndOfFile && element.HasEndBracket && element.Name.IsValid) {
+					context.Diagnostics?.Add (XmlCoreDiagnostics.UnclosedTag, element.Span, element.Name.FullName);
+				}
+				else if (isEndOfFile) {
 					context.Diagnostics?.Add (XmlCoreDiagnostics.IncompleteTagEof, context.PositionBeforeCurrentChar);
 				}
 				else if (element.Name.IsValid) {
@@ -127,7 +131,7 @@ namespace MonoDevelop.Xml.Parser
 					context.Diagnostics?.Add (XmlCoreDiagnostics.UnnamedTag, element.Span);
 				}
 
-				if (context.StateTag == MAYBE_SELF_CLOSING) {
+				if (context.StateTag == MAYBE_SELF_CLOSING || context.StateTag == MALFORMED_SELF_CLOSING) {
 					element.Close (element);
 					context.Nodes.Pop ();
 				}
@@ -137,6 +141,22 @@ namespace MonoDevelop.Xml.Parser
 			if (c == '/') {
 				context.StateTag = MAYBE_SELF_CLOSING;
 				return null;
+			}
+
+			if (context.StateTag == MAYBE_SELF_CLOSING) {
+				if (element.IsNamed) {
+					context.Diagnostics?.Add (XmlCoreDiagnostics.MalformedNamedSelfClosingTag, new TextSpan (context.Position, 1), element.Name.FullName, c);
+				} else {
+					context.Diagnostics?.Add (XmlCoreDiagnostics.MalformedSelfClosingTag, new TextSpan (context.Position, 1), c);
+				}
+				context.StateTag = MALFORMED_SELF_CLOSING;
+			}
+
+			if (context.StateTag == MALFORMED_SELF_CLOSING) {
+				if (XmlChar.IsWhitespace (c)) {
+					return null;
+				}
+				context.StateTag = FREE;
 			}
 
 			if (context.StateTag == ATTEMPT_RECOVERY) {
@@ -154,6 +174,15 @@ namespace MonoDevelop.Xml.Parser
 			context.StateTag = FREE;
 
 			if (context.CurrentStateLength > 0 && XmlChar.IsFirstNameChar (c)) {
+				replayCharacter = true;
+				return AttributeState;
+			}
+
+			if (context.PreviousState is XmlAttributeState && XmlChar.IsFirstNameChar (c) &&
+				element.Attributes.Last is XAttribute previousAttribute &&
+				previousAttribute.Value is not null &&
+				previousAttribute.Span.End == context.Position) {
+				context.Diagnostics?.Add (XmlCoreDiagnostics.MissingWhitespaceBetweenAttributes, new TextSpan (context.Position, 1));
 				replayCharacter = true;
 				return AttributeState;
 			}

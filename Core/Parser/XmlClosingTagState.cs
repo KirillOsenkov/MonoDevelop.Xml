@@ -125,6 +125,9 @@ namespace MonoDevelop.Xml.Parser
 			}
 
 			if (XmlChar.IsWhitespace (c)) {
+				if (context.CurrentStateLength == 0 && !ct.IsNamed) {
+					context.Diagnostics?.Add (XmlCoreDiagnostics.WhitespaceBeforeClosingTagName, new TextSpan (context.Position, 1));
+				}
 				return null;
 			}
 
